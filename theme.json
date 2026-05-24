@@ -1,0 +1,55 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/theme.json",
+  "version": 3,
+  "settings": {
+    "appearanceTools": true,
+    "color": {
+      "palette": [
+        { "name": "Abhay Navy", "slug": "abhay-navy", "color": "#061d3a" },
+        { "name": "Abhay Gold", "slug": "abhay-gold", "color": "#c38a20" },
+        { "name": "Cream", "slug": "abhay-cream", "color": "#f7f2e6" },
+        { "name": "Ink", "slug": "abhay-ink", "color": "#07172c" },
+        { "name": "White", "slug": "white", "color": "#ffffff" }
+      ]
+    },
+    "layout": {
+      "contentSize": "760px",
+      "wideSize": "1180px"
+    },
+    "spacing": {
+      "units": ["px", "rem", "%", "vw", "vh"]
+    },
+    "typography": {
+      "fontFamilies": [
+        {
+          "fontFamily": "Inter, Arial, sans-serif",
+          "name": "Inter",
+          "slug": "inter"
+        },
+        {
+          "fontFamily": "Georgia, 'Times New Roman', serif",
+          "name": "Serif",
+          "slug": "serif"
+        }
+      ]
+    }
+  },
+  "styles": {
+    "color": {
+      "background": "#f7f2e6",
+      "text": "#07172c"
+    },
+    "typography": {
+      "fontFamily": "var:preset|font-family|inter",
+      "lineHeight": "1.5"
+    },
+    "elements": {
+      "link": {
+        "color": {
+          "text": "#061d3a"
+        }
+      }
+    }
+  },
+  "templateParts": []
+}

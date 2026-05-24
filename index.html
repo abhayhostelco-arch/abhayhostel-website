@@ -1,0 +1,769 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Abhay Hostel One Page Preview</title>
+  <style>/*
+Theme Name: Abhay Hostel One Page
+Theme URI: https://example.com/abhay-hostel
+Author: Codex
+Description: A polished single-page block theme for Abhay Hostel registration.
+Version: 1.0.0
+Requires at least: 6.4
+Tested up to: 6.5
+Requires PHP: 7.4
+Text Domain: abhay-hostel
+*/
+
+:root {
+  --abhay-navy: #061d3a;
+  --abhay-gold: #c38a20;
+  --abhay-cream: #f7f2e6;
+  --abhay-cream-2: #fffaf0;
+  --abhay-ink: #07172c;
+  --abhay-muted: #536171;
+  --abhay-line: rgba(6, 29, 58, 0.14);
+  --abhay-shadow: 0 18px 48px rgba(6, 29, 58, 0.14);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--abhay-cream);
+  margin: 0;
+}
+
+.abhay-page {
+  background:
+    radial-gradient(circle at top right, rgba(195, 138, 32, 0.18), transparent 28rem),
+    linear-gradient(180deg, #fffaf0 0%, #f7f2e6 42%, #ffffff 100%);
+  color: var(--abhay-ink);
+  font-family: Inter, Arial, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.abhay-container {
+  margin-inline: auto;
+  max-width: 1180px;
+  padding-inline: 24px;
+}
+
+.abhay-nav {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  padding-block: 20px;
+}
+
+.abhay-brand {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  text-decoration: none;
+}
+
+.abhay-logo-mark {
+  align-items: center;
+  background: var(--abhay-navy);
+  border: 2px solid rgba(195, 138, 32, 0.5);
+  border-radius: 8px;
+  box-shadow: 0 8px 22px rgba(6, 29, 58, 0.08);
+  color: #ffffff;
+  display: flex;
+  flex: 0 0 auto;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.18rem;
+  font-weight: 900;
+  height: 54px;
+  justify-content: center;
+  letter-spacing: 0;
+  line-height: 1;
+  width: 54px;
+}
+
+.abhay-brand strong {
+  color: var(--abhay-navy);
+  display: block;
+  font-size: 1.1rem;
+  line-height: 1.05;
+}
+
+.abhay-brand-copy span {
+  color: var(--abhay-gold);
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.abhay-nav-links {
+  align-items: center;
+  display: flex;
+  gap: 22px;
+}
+
+.abhay-nav-links a {
+  color: var(--abhay-navy);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.abhay-button,
+.wp-block-button .wp-block-button__link.abhay-button {
+  align-items: center;
+  background: var(--abhay-gold);
+  border: 2px solid var(--abhay-gold);
+  border-radius: 7px;
+  color: #ffffff;
+  display: inline-flex;
+  font-weight: 800;
+  justify-content: center;
+  min-height: 46px;
+  padding: 12px 20px;
+  text-decoration: none;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.abhay-button:hover,
+.wp-block-button .wp-block-button__link.abhay-button:hover {
+  background: #ad7818;
+  box-shadow: 0 12px 24px rgba(195, 138, 32, 0.26);
+  transform: translateY(-1px);
+}
+
+.abhay-button-secondary {
+  background: transparent;
+  border-color: rgba(6, 29, 58, 0.26);
+  color: var(--abhay-navy);
+}
+
+.abhay-hero {
+  align-items: center;
+  display: grid;
+  gap: 46px;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.9fr);
+  padding-block: 36px 58px;
+}
+
+.abhay-kicker {
+  color: var(--abhay-gold);
+  font-size: 0.92rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  margin: 0 0 14px;
+  text-transform: uppercase;
+}
+
+.abhay-hero h1 {
+  color: var(--abhay-navy);
+  font-size: clamp(3rem, 7vw, 5.8rem);
+  line-height: 0.92;
+  margin: 0;
+  max-width: 9ch;
+  text-transform: uppercase;
+}
+
+.abhay-hero h1 span {
+  color: var(--abhay-gold);
+  display: block;
+}
+
+.abhay-tagline {
+  color: var(--abhay-ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.5rem, 3vw, 2.5rem);
+  font-style: italic;
+  line-height: 1.08;
+  margin: 18px 0 0;
+}
+
+.abhay-lead {
+  color: var(--abhay-muted);
+  font-size: 1.08rem;
+  line-height: 1.75;
+  margin: 26px 0 0;
+  max-width: 650px;
+}
+
+.abhay-hero-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 30px;
+}
+
+.abhay-price-note {
+  align-items: center;
+  color: var(--abhay-navy);
+  display: inline-flex;
+  font-weight: 800;
+  gap: 10px;
+}
+
+.abhay-price-note::before {
+  background: var(--abhay-gold);
+  border-radius: 999px;
+  content: "";
+  display: inline-block;
+  height: 10px;
+  width: 10px;
+}
+
+.abhay-hero-media {
+  margin-bottom: 42px;
+  position: relative;
+}
+
+.abhay-hero-card {
+  background: linear-gradient(145deg, #ffffff 0%, #fff7df 100%);
+  border: 1px solid rgba(195, 138, 32, 0.25);
+  border-radius: 8px;
+  box-shadow: var(--abhay-shadow);
+  overflow: hidden;
+  padding: 22px;
+  position: relative;
+}
+
+.abhay-hero-card-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.abhay-hero-card-header span {
+  color: var(--abhay-gold);
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.abhay-hero-card-header strong {
+  background: var(--abhay-navy);
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 0.8rem;
+  padding: 8px 12px;
+}
+
+.abhay-hero-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.abhay-hero-grid figure {
+  background: #ffffff;
+  border: 1px solid rgba(6, 29, 58, 0.08);
+  border-radius: 8px;
+  margin: 0;
+  overflow: hidden;
+}
+
+.abhay-hero-grid img {
+  aspect-ratio: 1.42 / 1;
+  background: #f8f0de;
+  display: block;
+  object-fit: cover;
+  width: 100%;
+}
+
+.abhay-hero-grid figcaption {
+  align-items: center;
+  background: #ffffff;
+  color: var(--abhay-navy);
+  display: flex;
+  font-size: 0.86rem;
+  font-weight: 900;
+  justify-content: center;
+  min-height: 42px;
+  padding: 10px 8px;
+  text-align: center;
+}
+
+.abhay-price-badge {
+  align-items: center;
+  background: var(--abhay-navy);
+  border: 5px solid var(--abhay-gold);
+  border-radius: 8px;
+  bottom: -52px;
+  box-shadow: 0 16px 30px rgba(6, 29, 58, 0.28);
+  color: #ffffff;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  height: auto;
+  justify-content: center;
+  position: absolute;
+  right: 24px;
+  text-align: center;
+  width: min(270px, calc(100% - 48px));
+  padding: 14px 18px;
+}
+
+.abhay-price-badge small {
+  color: #f7d88c;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.abhay-price-badge strong {
+  color: #ffca42;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.abhay-price-badge span {
+  font-size: 0.8rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.abhay-details {
+  background: var(--abhay-navy);
+  border-radius: 8px;
+  box-shadow: var(--abhay-shadow);
+  color: #ffffff;
+  display: grid;
+  gap: 1px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+}
+
+.abhay-detail {
+  background: rgba(255, 255, 255, 0.04);
+  min-width: 0;
+  padding: 24px;
+}
+
+.abhay-detail svg,
+.abhay-feature svg,
+.abhay-check svg {
+  color: var(--abhay-gold);
+  flex: 0 0 auto;
+}
+
+.abhay-detail span {
+  color: #f2d28f;
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.abhay-detail a,
+.abhay-detail strong {
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.abhay-section {
+  padding-block: 76px;
+}
+
+.abhay-section-heading {
+  margin-bottom: 34px;
+  text-align: center;
+}
+
+.abhay-section-heading p {
+  color: var(--abhay-gold);
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  margin: 0 0 10px;
+  text-transform: uppercase;
+}
+
+.abhay-section-heading h2 {
+  color: var(--abhay-navy);
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.05;
+  margin: 0;
+}
+
+.abhay-features {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.abhay-feature {
+  background: #ffffff;
+  border: 1px solid var(--abhay-line);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(6, 29, 58, 0.08);
+  display: flex;
+  flex-direction: column;
+  min-height: 210px;
+  overflow: hidden;
+  padding: 0;
+}
+
+.abhay-feature-image {
+  aspect-ratio: 16 / 10;
+  background: #fff7df;
+  display: block;
+  object-fit: cover;
+  width: 100%;
+}
+
+.abhay-feature-icon {
+  align-items: center;
+  background: #fff7df;
+  border: 1px solid rgba(195, 138, 32, 0.3);
+  border-radius: 999px;
+  display: flex;
+  height: 56px;
+  justify-content: center;
+  margin: -28px 26px 20px;
+  position: relative;
+  width: 56px;
+}
+
+.abhay-feature h3 {
+  color: var(--abhay-navy);
+  font-size: 1.18rem;
+  line-height: 1.2;
+  margin: 0 26px 10px;
+}
+
+.abhay-feature p {
+  color: var(--abhay-muted);
+  line-height: 1.65;
+  margin: 0 26px 26px;
+}
+
+.abhay-band {
+  background: var(--abhay-navy);
+  color: #ffffff;
+}
+
+.abhay-band .abhay-section-heading h2,
+.abhay-band .abhay-section-heading p {
+  color: #ffffff;
+}
+
+.abhay-band .abhay-section-heading p {
+  color: #f2d28f;
+}
+
+.abhay-split {
+  align-items: center;
+  display: grid;
+  gap: 38px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.abhay-mission {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 1.08rem;
+  line-height: 1.8;
+  margin: 0;
+}
+
+.abhay-checklist {
+  display: grid;
+  gap: 14px;
+}
+
+.abhay-check {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #ffffff;
+  display: flex;
+  font-weight: 800;
+  gap: 12px;
+  padding: 16px 18px;
+}
+
+.abhay-final {
+  background: var(--abhay-navy);
+  color: #ffffff;
+  padding-block: 58px;
+  text-align: center;
+}
+
+.abhay-final h2 {
+  color: #ffffff;
+  font-size: clamp(2rem, 4vw, 3.1rem);
+  line-height: 1.1;
+  margin: 0 0 10px;
+}
+
+.abhay-final h2 span {
+  color: var(--abhay-gold);
+}
+
+.abhay-final p {
+  color: rgba(255, 255, 255, 0.75);
+  margin: 0 0 28px;
+}
+
+.abhay-footer {
+  background: #04152b;
+  color: rgba(255, 255, 255, 0.72);
+  padding-block: 18px;
+  text-align: center;
+}
+
+.abhay-footer a {
+  color: #f2d28f;
+}
+
+@media (max-width: 900px) {
+  .abhay-nav-links {
+    display: none;
+  }
+
+  .abhay-hero,
+  .abhay-split {
+    grid-template-columns: 1fr;
+  }
+
+  .abhay-hero {
+    padding-block-start: 18px;
+  }
+
+  .abhay-details {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .abhay-features {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .abhay-container {
+    padding-inline: 18px;
+  }
+
+  .abhay-logo-mark {
+    height: 48px;
+    width: 48px;
+  }
+
+  .abhay-hero h1 {
+    font-size: clamp(2.8rem, 17vw, 4rem);
+  }
+
+  .abhay-hero-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .abhay-button,
+  .wp-block-button .wp-block-button__link.abhay-button {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .abhay-price-badge {
+    bottom: -44px;
+    right: 14px;
+    width: calc(100% - 28px);
+  }
+
+  .abhay-price-badge strong {
+    font-size: 1.55rem;
+  }
+
+  .abhay-details,
+  .abhay-features {
+    grid-template-columns: 1fr;
+  }
+
+  .abhay-section {
+    padding-block: 54px;
+  }
+}
+</style>
+</head>
+<body>
+
+<main class="abhay-page">
+  <nav class="abhay-container abhay-nav" aria-label="Main navigation">
+    <a class="abhay-brand" href="#home" aria-label="Abhay Hostel home">
+      <span class="abhay-logo-mark" aria-hidden="true">AH</span>
+      <span class="abhay-brand-copy"><strong>Abhay Hostel</strong><span>Student Hostel</span></span>
+    </a>
+    <div class="abhay-nav-links">
+      <a href="#facilities">Facilities</a>
+      <a href="#mission">Mission</a>
+      <a href="#contact">Contact</a>
+      <a class="abhay-button" href="https://docs.google.com/forms/d/e/1FAIpQLSfvOkX2Mmux6DQXEg7phJkQ7CgEoLH3t5XeBKzkvnVv2Mef-A/viewform?usp=dialog" target="_blank" rel="noopener" aria-label="Register for Abhay Hostel">Register Now</a>
+    </div>
+  </nav>
+
+  <section id="home" class="abhay-container abhay-hero">
+    <div>
+      <p class="abhay-kicker">Affordable Student Hostel</p>
+      <h1>Abhay <span>Hostel</span></h1>
+      <p class="abhay-tagline">A Place to Stay,<br />A Place to Grow</p>
+      <p class="abhay-lead">A peaceful and disciplined hostel in Jaggivan Nagar, Vikash Nagar, Dhanbad, designed to help students focus on studies, build strong habits, and achieve their academic goals.</p>
+      <div class="abhay-hero-actions">
+        <a class="abhay-button" href="https://docs.google.com/forms/d/e/1FAIpQLSfvOkX2Mmux6DQXEg7phJkQ7CgEoLH3t5XeBKzkvnVv2Mef-A/viewform?usp=dialog" target="_blank" rel="noopener" aria-label="Register for Abhay Hostel">Register Now</a>
+        <a class="abhay-button abhay-button-secondary" href="#facilities">View Facilities</a>
+        <span class="abhay-price-note">Only ₹1500/- per month</span>
+      </div>
+    </div>
+    <div class="abhay-hero-media">
+      <div class="abhay-hero-card">
+        <div class="abhay-hero-card-header">
+          <span>Student Hostel Facilities</span>
+          <strong>Dhanbad</strong>
+        </div>
+        <div class="abhay-hero-grid" aria-label="Abhay Hostel key facilities">
+          <figure>
+            <img src="assets/images/facilities/comfortable-rooms.jpg" alt="Real bunk bed room at Abhay Hostel" />
+            <figcaption>Comfortable Rooms</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/images/facilities/cubical-library.jpg" alt="Real cubical library study area" />
+            <figcaption>Study Library</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/images/facilities/nutritious-meals.jpg" alt="Real nutritious meal plate" />
+            <figcaption>Nutritious Meals</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/images/facilities/safe-environment.jpg" alt="Real safe and disciplined hostel corridor" />
+            <figcaption>Safe Environment</figcaption>
+          </figure>
+        </div>
+      </div>
+      <div class="abhay-price-badge" aria-label="Only rupees 1500 per month">
+        <small>Only</small>
+        <strong>₹1500</strong>
+        <span>Per Month</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="contact" class="abhay-container" aria-label="Hostel contact details">
+    <div class="abhay-details">
+      <div class="abhay-detail">
+        <span>Location</span>
+        <strong>Jaggivan Nagar, Vikash Nagar, Dhanbad</strong>
+      </div>
+      <div class="abhay-detail">
+        <span>Contact</span>
+        <a href="tel:+917209852048">7209852048</a>
+      </div>
+      <div class="abhay-detail">
+        <span>Email</span>
+        <a href="mailto:abhayhostel.co@gmail.com">abhayhostel.co@gmail.com</a>
+      </div>
+      <div class="abhay-detail">
+        <span>Fee</span>
+        <strong>Only ₹1500/- per month</strong>
+      </div>
+    </div>
+  </section>
+
+  <section id="facilities" class="abhay-container abhay-section">
+    <div class="abhay-section-heading">
+      <p>Why choose us</p>
+      <h2>Everything students need to stay focused</h2>
+    </div>
+    <div class="abhay-features">
+      <article class="abhay-feature">
+        <img class="abhay-feature-image" src="assets/images/facilities/comfortable-rooms.jpg" alt="Real bunk bed room at Abhay Hostel" />
+        <div class="abhay-feature-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4v16"/><path d="M22 12v8"/><path d="M2 12h20"/><path d="M4 12V8a2 2 0 0 1 2-2h3a3 3 0 0 1 3 3v3"/></svg></div>
+        <h3>Comfortable Bunk Bed Rooms</h3>
+        <p>Clean, spacious, and student-friendly rooms designed for comfort and productivity.</p>
+      </article>
+      <article class="abhay-feature">
+        <img class="abhay-feature-image" src="assets/images/facilities/cubical-library.jpg" alt="Real cubical library study area" />
+        <div class="abhay-feature-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/></svg></div>
+        <h3>Cubical Library Facility</h3>
+        <p>Dedicated study cubicles provide a distraction-free environment for focused learning.</p>
+      </article>
+      <article class="abhay-feature">
+        <img class="abhay-feature-image" src="assets/images/facilities/mentorship.jpg" alt="Real personal mentorship discussion" />
+        <div class="abhay-feature-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <h3>Personal Mentorship</h3>
+        <p>Regular guidance and support help students stay motivated and achieve their goals.</p>
+      </article>
+      <article class="abhay-feature">
+        <img class="abhay-feature-image" src="assets/images/facilities/nutritious-meals.jpg" alt="Real nutritious meal plate" />
+        <div class="abhay-feature-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"/><path d="M8 21h8"/><path d="M19 3c0 4-2 7-5 7"/><path d="M5 3c0 4 2 7 5 7"/></svg></div>
+        <h3>Nutritious & Hygienic Food</h3>
+        <p>Freshly prepared meals support a healthy and productive student lifestyle.</p>
+      </article>
+      <article class="abhay-feature">
+        <img class="abhay-feature-image" src="assets/images/facilities/doubt-support.jpg" alt="Real doubt solving support session" />
+        <div class="abhay-feature-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 4h18v14H7l-4 4V4z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg></div>
+        <h3>Doubt Solving Support</h3>
+        <p>Academic assistance and concept clarification strengthen everyday learning.</p>
+      </article>
+      <article class="abhay-feature">
+        <img class="abhay-feature-image" src="assets/images/facilities/safe-environment.jpg" alt="Real safe and disciplined hostel corridor" />
+        <div class="abhay-feature-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></div>
+        <h3>Safe & Disciplined Environment</h3>
+        <p>A positive atmosphere encourages responsibility, focus, and personal growth.</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="mission" class="abhay-band">
+    <div class="abhay-container abhay-section abhay-split">
+      <div>
+        <div class="abhay-section-heading" style="text-align:left;margin-bottom:18px">
+          <p>Our mission</p>
+          <h2>Quality accommodation and study support for every student</h2>
+        </div>
+        <p class="abhay-mission">Through dedicated support and well-managed facilities, Abhay Hostel helps students focus on what matters most: their future. The environment is peaceful, disciplined, affordable, and built around academic growth.</p>
+      </div>
+      <div class="abhay-checklist">
+        <div class="abhay-check"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m20 6-11 11-5-5"/></svg>Fooding & Lodging</div>
+        <div class="abhay-check"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m20 6-11 11-5-5"/></svg>Cubical Library Facility</div>
+        <div class="abhay-check"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m20 6-11 11-5-5"/></svg>Personal Mentorship</div>
+        <div class="abhay-check"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m20 6-11 11-5-5"/></svg>Doubt Solving Support</div>
+        <div class="abhay-check"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m20 6-11 11-5-5"/></svg>Safe & Disciplined Environment</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="abhay-final">
+    <div class="abhay-container">
+      <h2>Discipline Today <span>•</span> Success Tomorrow</h2>
+      <p>Stay today, achieve tomorrow.</p>
+      <a class="abhay-button" href="https://docs.google.com/forms/d/e/1FAIpQLSfvOkX2Mmux6DQXEg7phJkQ7CgEoLH3t5XeBKzkvnVv2Mef-A/viewform?usp=dialog" target="_blank" rel="noopener" aria-label="Register for Abhay Hostel">Register Now</a>
+    </div>
+  </section>
+
+  <footer class="abhay-footer">
+    <div class="abhay-container">
+      Abhay Hostel, Jaggivan Nagar, Vikash Nagar, Dhanbad · <a href="tel:+917209852048">7209852048</a> · <a href="mailto:abhayhostel.co@gmail.com">abhayhostel.co@gmail.com</a>
+    </div>
+  </footer>
+</main>
+
+
+</body>
+</html>
