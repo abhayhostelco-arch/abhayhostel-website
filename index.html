@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Abhay Hostel One Page Preview</title>
+  <title>Abhay Hostel</title>
   <style>/*
-Theme Name: Abhay Hostel One Page
+Theme Name: Abhay Hostel
 Theme URI: https://example.com/abhay-hostel
 Author: Codex
 Description: A polished single-page block theme for Abhay Hostel registration.
@@ -68,27 +68,20 @@ body {
 .abhay-brand {
   align-items: center;
   display: flex;
-  gap: 12px;
+  gap: 8px;
   text-decoration: none;
 }
 
 .abhay-logo-mark {
-  align-items: center;
-  background: var(--abhay-navy);
-  border: 2px solid rgba(195, 138, 32, 0.5);
-  border-radius: 8px;
-  box-shadow: 0 8px 22px rgba(6, 29, 58, 0.08);
-  color: #ffffff;
-  display: flex;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
   flex: 0 0 auto;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.18rem;
-  font-weight: 900;
-  height: 54px;
-  justify-content: center;
-  letter-spacing: 0;
-  line-height: 1;
-  width: 54px;
+  height: 74px;
+  object-fit: contain;
+  padding: 0;
+  width: 76px;
 }
 
 .abhay-brand strong {
@@ -187,6 +180,19 @@ body {
   font-style: italic;
   line-height: 1.08;
   margin: 18px 0 0;
+}
+
+.abhay-audience {
+  background: var(--abhay-navy);
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin: 18px 0 0;
+  padding: 9px 14px;
+  text-transform: uppercase;
 }
 
 .abhay-lead {
@@ -563,8 +569,8 @@ body {
   }
 
   .abhay-logo-mark {
-    height: 48px;
-    width: 48px;
+    height: 58px;
+    width: 60px;
   }
 
   .abhay-hero h1 {
@@ -608,7 +614,7 @@ body {
 <main class="abhay-page">
   <nav class="abhay-container abhay-nav" aria-label="Main navigation">
     <a class="abhay-brand" href="#home" aria-label="Abhay Hostel home">
-      <span class="abhay-logo-mark" aria-hidden="true">AH</span>
+      <img class="abhay-logo-mark" src="assets/images/abhay-hostel-logo-trimmed.png" alt="Abhay Hostel logo" />
       <span class="abhay-brand-copy"><strong>Abhay Hostel</strong><span>Student Hostel</span></span>
     </a>
     <div class="abhay-nav-links">
@@ -621,10 +627,11 @@ body {
 
   <section id="home" class="abhay-container abhay-hero">
     <div>
-      <p class="abhay-kicker">Affordable Student Hostel</p>
+      <p class="abhay-kicker">Affordable Boys Student Hostel</p>
       <h1>Abhay <span>Hostel</span></h1>
+      <p class="abhay-audience">Only For Boys</p>
       <p class="abhay-tagline">A Place to Stay,<br />A Place to Grow</p>
-      <p class="abhay-lead">A peaceful and disciplined hostel in Jagjivan Nagar, Vikash Nagar, Dhanbad, designed to help students focus on studies, build strong habits, and achieve their academic goals.</p>
+      <p class="abhay-lead">A peaceful and disciplined boys hostel in Jagjivan Nagar, Vikash Nagar, Dhanbad, designed to help students focus on studies, build strong habits, and achieve their academic goals.</p>
       <div class="abhay-hero-actions">
         <a class="abhay-button" href="https://docs.google.com/forms/d/e/1FAIpQLSfvOkX2Mmux6DQXEg7phJkQ7CgEoLH3t5XeBKzkvnVv2Mef-A/viewform?usp=dialog" target="_blank" rel="noopener" aria-label="Register for Abhay Hostel">Register Now</a>
         <a class="abhay-button abhay-button-secondary" href="#facilities">View Facilities</a>
@@ -634,7 +641,7 @@ body {
     <div class="abhay-hero-media">
       <div class="abhay-hero-card">
         <div class="abhay-hero-card-header">
-          <span>Student Hostel Facilities</span>
+          <span>Boys Hostel Facilities</span>
           <strong>Dhanbad</strong>
         </div>
         <div class="abhay-hero-grid" aria-label="Abhay Hostel key facilities">
