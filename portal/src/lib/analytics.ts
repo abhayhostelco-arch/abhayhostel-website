@@ -18,6 +18,15 @@ export function average(values: number[]): number | null {
   return values.reduce((total, value) => total + value, 0) / values.length;
 }
 
+export function total(values: number[]): number {
+  return values.reduce((sum, value) => sum + value, 0);
+}
+
+export function totalRecorded(values: Array<number | null>): number | null {
+  const recorded = values.filter((value): value is number => value !== null);
+  return recorded.length === 0 ? null : total(recorded);
+}
+
 export function averageClock(values: string[], overnight = false): number | null {
   if (values.length === 0) return null;
   const minutes = values.map(timeToMinutes).map((value) => {

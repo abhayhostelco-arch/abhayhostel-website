@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Download } from "lucide-react";
 import { TrendChart } from "@/components/trend-chart";
-import { average, averageClock, formatClock, formatMinutes, sleepDurationMinutes } from "@/lib/analytics";
+import { average, averageClock, formatClock, formatMinutes, sleepDurationMinutes, total, totalRecorded } from "@/lib/analytics";
 import { requireProfile } from "@/lib/auth";
 import { daysAgoInIndia } from "@/lib/date";
 import { getEntries, getProfiles } from "@/lib/data";
@@ -24,6 +24,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const completion = Math.min(100, Math.round((entries.length / possible) * 100));
   const classes = entries.filter((entry) => entry.academy_status !== "no_class");
   const attendance = classes.length === 0 ? 0 : Math.round((classes.filter((entry) => entry.academy_status === "present").length / classes.length) * 100);
+  const totalStudy = total(entries.map((entry) => entry.study_minutes));
+  const totalRounds = totalRecorded(entries.map((entry) => entry.chanting_rounds));
   const chartData = [...entries].reverse().map((entry) => ({
     date: entry.entry_date.slice(5), sleepHours: Number((sleepDurationMinutes(entry.sleep_time, entry.wake_time) / 60).toFixed(1)), studyHours: Number((entry.study_minutes / 60).toFixed(1)),
   }));
@@ -31,7 +33,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   if (studentId) exportQuery.set("studentId", studentId);
   return (
     <main className="page-container">
-      <header className="page-heading"><div><p className="eyebrow">Analysis</p><h1>Routine reports</h1><p>Compare submission, sleep, study, and attendance trends.</p></div><a className="button" href={`/api/reports/export?${exportQuery}`}><Download size={18} /> Export CSV</a></header>
+      <header className="page-heading"><div><p className="eyebrow">Analysis</p><h1>Routine reports</h1><p>Compare submission, sleep, study, chanting, and attendance trends.</p></div><a className="button" href={`/api/reports/export?${exportQuery}`}><Download size={18} /> Export CSV</a></header>
       <section className="panel">
         <form className="filters" method="get">
           <div className="field"><label htmlFor="range">Range</label><select id="range" name="range" defaultValue={String(range)}><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option></select></div>
@@ -44,6 +46,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <article className="metric-card"><span>Attendance</span><strong>{attendance}%</strong></article>
         <article className="metric-card"><span>Average sleep</span><strong>{formatMinutes(average(entries.map((entry) => sleepDurationMinutes(entry.sleep_time, entry.wake_time))))}</strong></article>
         <article className="metric-card"><span>Average study</span><strong>{formatMinutes(average(entries.map((entry) => entry.study_minutes)))}</strong></article>
+        <article className="metric-card"><span>Total study</span><strong>{formatMinutes(totalStudy)}</strong></article>
+        <article className="metric-card"><span>Total chanting</span><strong>{totalRounds === null ? "—" : `${totalRounds} rounds`}</strong></article>
       </section>
       <section className="content-grid">
         <article className="panel"><div className="panel-title"><h2>Routine trend</h2></div><TrendChart data={chartData} /></article>

@@ -7,6 +7,8 @@ import {
   formatMinutes,
   sleepDurationMinutes,
   timeToMinutes,
+  total,
+  totalRecorded,
 } from "@/lib/analytics";
 import type { AlertSettings, DailyEntry, Profile } from "@/lib/types";
 
@@ -46,6 +48,7 @@ function entry(overrides: Partial<DailyEntry> = {}): DailyEntry {
     sleep_time: "23:00:00",
     wake_time: "05:00:00",
     study_minutes: 180,
+    chanting_rounds: 16,
     academy_status: "absent",
     note: null,
     created_at: "2026-08-21T00:00:00Z",
@@ -69,6 +72,9 @@ describe("sleep and averages", () => {
     expect(formatMinutes(125)).toBe("2h 05m");
     expect(formatClock(null)).toBe("—");
     expect(formatClock(390)).toContain("6:30");
+    expect(total([60, 90, 30])).toBe(180);
+    expect(totalRecorded([16, null, 8])).toBe(24);
+    expect(totalRecorded([null])).toBeNull();
   });
 });
 

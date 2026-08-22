@@ -23,6 +23,7 @@ export interface DailyEntry {
   sleep_time: string;
   wake_time: string;
   study_minutes: number;
+  chanting_rounds: number | null;
   academy_status: AcademyStatus;
   note: string | null;
   created_at: string;

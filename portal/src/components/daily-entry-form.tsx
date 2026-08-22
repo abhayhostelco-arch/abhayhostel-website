@@ -94,6 +94,22 @@ export function DailyEntryForm({
           required
         />
       </div>
+      <div className="field">
+        <label htmlFor="chantingRounds">Chanting rounds</label>
+        <input
+          id="chantingRounds"
+          name="chantingRounds"
+          type="number"
+          min={0}
+          max={108}
+          step={1}
+          defaultValue={entry ? entry.chanting_rounds ?? "" : 0}
+          required
+        />
+        {state.fieldErrors?.chantingRounds?.[0] ? (
+          <p className="field-error" role="alert">Enter a whole number from 0 to 108.</p>
+        ) : null}
+      </div>
       <div className="field full-span">
         <label htmlFor="note">Optional note</label>
         <textarea

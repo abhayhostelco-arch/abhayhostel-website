@@ -251,6 +251,12 @@ a {
   border-radius: 9px;
 }
 
+.field-error {
+  color: var(--danger);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
 .field textarea {
   min-height: 110px;
   resize: vertical;

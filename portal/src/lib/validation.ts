@@ -64,6 +64,10 @@ export const dailyEntrySchema = z.object({
   wakeTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   studyHours: z.coerce.number().int().min(0).max(18),
   studyMinutes: z.coerce.number().int().min(0).max(59),
+  chantingRounds: z.preprocess(
+    (value) => value === null || value === "" ? undefined : value,
+    z.coerce.number().int().min(0).max(108),
+  ),
   academyStatus: z.enum(["present", "absent", "no_class"]),
   note: z.string().trim().max(500).transform((value) => value || null),
 });

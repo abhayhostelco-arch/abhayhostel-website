@@ -28,6 +28,7 @@ describe("daily entry validation", () => {
       wakeTime: "06:15",
       studyHours: "4",
       studyMinutes: "30",
+      chantingRounds: "16",
       academyStatus: "present",
       note: "   ",
     });
@@ -41,9 +42,28 @@ describe("daily entry validation", () => {
       wakeTime: "06:00",
       studyHours: 19,
       studyMinutes: 0,
+      chantingRounds: 109,
       academyStatus: "holiday",
       note: "x".repeat(501),
     }).success).toBe(false);
+  });
+
+  it("requires whole chanting rounds between 0 and 108", () => {
+    const validEntry = {
+      entryDate: "2026-08-22",
+      sleepTime: "22:30",
+      wakeTime: "06:00",
+      studyHours: 4,
+      studyMinutes: 0,
+      academyStatus: "present",
+      note: "",
+    };
+    expect(dailyEntrySchema.safeParse({ ...validEntry, chantingRounds: 0 }).success).toBe(true);
+    expect(dailyEntrySchema.safeParse({ ...validEntry, chantingRounds: 108 }).success).toBe(true);
+    expect(dailyEntrySchema.safeParse({ ...validEntry, chantingRounds: "" }).success).toBe(false);
+    expect(dailyEntrySchema.safeParse({ ...validEntry, chantingRounds: 1.5 }).success).toBe(false);
+    expect(dailyEntrySchema.safeParse({ ...validEntry, chantingRounds: -1 }).success).toBe(false);
+    expect(dailyEntrySchema.safeParse({ ...validEntry, chantingRounds: 109 }).success).toBe(false);
   });
 });
 

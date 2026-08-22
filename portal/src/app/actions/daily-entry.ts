@@ -19,6 +19,7 @@ export async function saveDailyEntryAction(
     wakeTime: formData.get("wakeTime"),
     studyHours: formData.get("studyHours"),
     studyMinutes: formData.get("studyMinutes"),
+    chantingRounds: formData.get("chantingRounds"),
     academyStatus: formData.get("academyStatus"),
     note: formData.get("note") ?? "",
   });
@@ -46,6 +47,7 @@ export async function saveDailyEntryAction(
       sleep_time: parsed.data.sleepTime,
       wake_time: parsed.data.wakeTime,
       study_minutes: studyMinutes,
+      chanting_rounds: parsed.data.chantingRounds,
       academy_status: parsed.data.academyStatus,
       note: parsed.data.note,
     },

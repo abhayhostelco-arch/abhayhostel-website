@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BellRing, CheckCircle2, Clock3, Users } from "lucide-react";
 import { TrendChart } from "@/components/trend-chart";
-import { deriveAlerts } from "@/lib/analytics";
+import { deriveAlerts, formatMinutes, sleepDurationMinutes } from "@/lib/analytics";
 import { requireProfile } from "@/lib/auth";
 import { daysAgoInIndia, todayInIndia } from "@/lib/date";
 import { getAlertSettings, getEntries, getProfiles } from "@/lib/data";
@@ -19,6 +19,7 @@ export default async function AdminOverviewPage() {
   const active = students.filter((student) => student.is_active);
   const today = todayInIndia();
   const todayEntries = entries.filter((entry) => entry.entry_date === today);
+  const todayEntryByStudent = new Map(todayEntries.map((entry) => [entry.student_id, entry]));
   const submitted = new Set(todayEntries.map((entry) => entry.student_id));
   const alerts = deriveAlerts(active, entries, settings, 7).slice(0, 6);
   const chartData = Array.from({ length: 14 }, (_, index) => {
@@ -68,16 +69,24 @@ export default async function AdminOverviewPage() {
         <div className="panel-title"><h2>Today’s completion</h2></div>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Student</th><th>Academy / class</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Student</th><th>Bedtime</th><th>Wake-up</th><th>Sleep</th><th>Study today</th><th>Rounds</th><th>Attendance</th><th>Status</th><th></th></tr></thead>
             <tbody>
-              {active.map((student) => (
-                <tr key={student.id}>
-                  <td><strong>{student.full_name}</strong><br /><small>{student.email}</small></td>
-                  <td>{student.academy_label ?? "—"}</td>
-                  <td><span className={`status-pill ${submitted.has(student.id) ? "status-success" : "status-warning"}`}>{submitted.has(student.id) ? "Submitted" : "Pending"}</span></td>
-                  <td><Link href={`/admin/students/${student.id}`}>View trends</Link></td>
-                </tr>
-              ))}
+              {active.map((student) => {
+                const entry = todayEntryByStudent.get(student.id);
+                return (
+                  <tr key={student.id}>
+                    <td><strong>{student.full_name}</strong><br /><small>{student.academy_label ?? student.email}</small></td>
+                    <td>{entry?.sleep_time.slice(0, 5) ?? "—"}</td>
+                    <td>{entry?.wake_time.slice(0, 5) ?? "—"}</td>
+                    <td>{entry ? formatMinutes(sleepDurationMinutes(entry.sleep_time, entry.wake_time)) : "—"}</td>
+                    <td>{entry ? formatMinutes(entry.study_minutes) : "—"}</td>
+                    <td>{entry?.chanting_rounds ?? "—"}</td>
+                    <td>{entry ? entry.academy_status.replace("_", " ") : "—"}</td>
+                    <td><span className={`status-pill ${submitted.has(student.id) ? "status-success" : "status-warning"}`}>{submitted.has(student.id) ? "Submitted" : "Pending"}</span></td>
+                    <td><Link href={`/admin/students/${student.id}`}>View trends</Link></td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
