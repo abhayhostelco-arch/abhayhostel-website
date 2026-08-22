@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AccountForm } from "@/components/account-form";
 import { AccountResetForm } from "@/components/account-reset-form";
+import { ReauthForm } from "@/components/reauth-form";
 import { setAccountActiveAction } from "@/app/actions/accounts";
 import { requireProfile } from "@/lib/auth";
 import { displayDate } from "@/lib/date";
@@ -63,10 +64,17 @@ export default async function StudentsPage({
             {students.length === 0 ? <p className="empty-state">No students match these filters.</p> : null}
           </div>
         </article>
-        <aside className="panel">
-          <div className="panel-title"><h2>Create student</h2></div>
-          <AccountForm role="student" />
-        </aside>
+        <div className="stack">
+          <aside className="panel">
+            <div className="panel-title"><h2>Unlock credential resets</h2></div>
+            <p>Confirm your password once to enable resets for the next 15 minutes.</p>
+            <ReauthForm />
+          </aside>
+          <aside className="panel">
+            <div className="panel-title"><h2>Create student</h2></div>
+            <AccountForm role="student" />
+          </aside>
+        </div>
       </section>
     </main>
   );
