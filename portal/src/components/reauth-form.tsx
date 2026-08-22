@@ -18,6 +18,7 @@ export function ReauthForm() {
           maxLength={128}
           required
         />
+        <p className="field-hint">Password must contain at least 14 characters.</p>
       </div>
       {state.message ? (
         <p className={`form-message ${state.status === "success" ? "form-success" : "form-error"}`}>

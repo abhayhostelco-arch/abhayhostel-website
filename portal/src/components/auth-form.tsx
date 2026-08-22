@@ -36,6 +36,7 @@ export function LoginForm() {
             maxLength={128}
             required
           />
+          <p className="field-hint">Password must contain at least 14 characters.</p>
         </div>
         <TurnstileWidget />
         {state.status === "error" && state.message ? (

@@ -257,6 +257,12 @@ a {
   line-height: 1.4;
 }
 
+.field-hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
 .field textarea {
   min-height: 110px;
   resize: vertical;
