@@ -35,7 +35,7 @@ Import this GitHub repository as a new Vercel project and set **Root Directory**
 
 Do not add bootstrap variables to Vercel. Deploy, verify the security headers, and attach `app.abhayhostel.in`. Add the DNS record Vercel specifies without changing the apex/root marketing-site records.
 
-Before changing DNS, inspect the owner's existing Cloudflare Pages, Workers, static-site, and DNS configuration. The current marketing deployment may already depend on Cloudflare. Preserve all apex (`abhayhostel.in`) and `www` records and routes; add only the new `app` record after confirming it does not overlap an existing Pages custom domain, Worker route, redirect, or wildcard record.
+The verified existing topology is: GoDaddy authoritative DNS (`ns51/ns52.domaincontrol.com`) and Netlify hosting for the static marketing site (`www` points to `ephemeral-tarsier-d3f397.netlify.app`; the apex is served by Netlify). Preserve the apex (`abhayhostel.in`) and `www` records. After Vercel supplies the target, add only the new `app` record in GoDaddy DNS. Cloudflare is used only for the portal's Turnstile widget unless the owner explicitly changes this architecture.
 
 Use the strongest free Vercel Firewall controls available: restrict unexpected methods, challenge obvious bot/automation traffic, and use Attack Challenge Mode during an active Layer-7 incident. Vercel provides automatic network/application DDoS mitigation; Supabase protects its edge, but neither removes the need for query caps and incident monitoring. If automated abuse persists, the first paid upgrades are WAF rate limiting and managed OWASP rules.
 
