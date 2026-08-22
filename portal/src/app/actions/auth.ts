@@ -66,9 +66,20 @@ export async function forgotPasswordAction(
   _previous: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const captchaToken = formData.get("captchaToken");
+  const captchaError =
+    "Security verification failed. Refresh the page and try again.";
+  if (
+    typeof captchaToken !== "string" ||
+    captchaToken.length === 0 ||
+    captchaToken.length > 4096
+  ) {
+    return { status: "error", message: captchaError };
+  }
+
   const parsed = forgotPasswordSchema.safeParse({
     email: formData.get("email"),
-    captchaToken: formData.get("captchaToken") || undefined,
+    captchaToken,
   });
   const message =
     "If that email belongs to an active account, password-reset instructions will be sent.";
@@ -84,10 +95,13 @@ export async function forgotPasswordAction(
       .maybeSingle();
     if (!activeProfile) return { status: "success", message };
     const supabase = await createClient();
-    await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+    const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
       redirectTo: `${env.NEXT_PUBLIC_APP_URL}/change-password`,
       captchaToken: parsed.data.captchaToken,
     });
+    if (error?.code === "captcha_failed") {
+      return { status: "error", message: captchaError };
+    }
   } catch {
     // Deliberately return the same response to prevent account enumeration.
   }

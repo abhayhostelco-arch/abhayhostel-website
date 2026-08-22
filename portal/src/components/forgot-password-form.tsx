@@ -23,7 +23,10 @@ export function ForgotPasswordForm() {
         </div>
         <TurnstileWidget />
         {state.message ? (
-          <p className="form-message form-success" role="status">
+          <p
+            className={`form-message ${state.status === "error" ? "form-error" : "form-success"}`}
+            role={state.status === "error" ? "alert" : "status"}
+          >
             {state.message}
           </p>
         ) : null}
