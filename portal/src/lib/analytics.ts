@@ -119,14 +119,14 @@ export function deriveAlerts(
             message: `Study duration was ${formatMinutes(entry.study_minutes)}.`,
           });
         }
-        if (settings.absence_alert_enabled && entry.academy_status === "absent") {
+        if (settings.absence_alert_enabled && entry.gita_class_status === "absent") {
           alerts.push({
             id: `${student.id}:${date}:absence`,
             date,
             studentId: student.id,
             studentName: student.full_name,
             type: "absence",
-            message: "Student was absent from academy.",
+            message: "Student was absent from Gita class.",
           });
         }
       }

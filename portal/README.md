@@ -6,7 +6,8 @@ Secure student routine tracking for `app.abhayhostel.in`. This Next.js applicati
 
 - Next.js App Router, TypeScript, Supabase Auth/PostgreSQL, and Netlify
 - `super_admin`, `admin`, and `student` authorization enforced in server code and PostgreSQL RLS
-- Daily wake-up records, 90-day history, reports, derived alerts, and formula-safe CSV exports
+- Daily Sadhana, study, discipline, and seva records with 90-day history
+- Server-calculated Growth Scores, progress charts, named rankings, reports, alerts, and formula-safe CSV exports
 - No public registration or hard-delete UI; forced first-login password changes and recent reauthentication for sensitive operations
 - Nonce CSP, secure cookies, strict schemas, capped queries/bodies, Turnstile support, audit events, CI, CodeQL, and dependency updates
 

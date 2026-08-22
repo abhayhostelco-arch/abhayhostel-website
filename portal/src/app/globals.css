@@ -706,6 +706,28 @@ td {
   gap: 1rem;
 }
 
+.routine-section {
+  padding: 1rem;
+  background: var(--cream-light);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.routine-section legend {
+  padding: 0 0.4rem;
+  color: var(--navy);
+  font-family: Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.routine-section .checkbox-row {
+  min-height: 48px;
+  align-self: end;
+  color: var(--navy);
+  font-weight: 750;
+}
+
 .full-span {
   grid-column: 1 / -1;
 }
@@ -742,6 +764,27 @@ td {
   grid-template-columns: 1fr;
 }
 
+.growth-score-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.growth-score-overall {
+  color: #fff;
+  background: var(--navy);
+  border-color: var(--navy);
+}
+
+.growth-score-overall span,
+.growth-score-overall strong {
+  color: #fff;
+}
+
+.current-student-row {
+  background: var(--warning-soft);
+}
+
 .narrow-panel {
   max-width: 780px;
 }
@@ -757,11 +800,20 @@ td {
 }
 
 @media (max-width: 1120px) {
+  .growth-score-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .content-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .growth-score-grid {
     grid-template-columns: 1fr;
   }
 }

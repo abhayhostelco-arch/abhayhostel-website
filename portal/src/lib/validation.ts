@@ -68,9 +68,33 @@ export const dailyEntrySchema = z.object({
     (value) => value === null || value === "" ? undefined : value,
     z.coerce.number().int().min(0).max(108),
   ),
-  academyStatus: z.enum(["present", "absent", "no_class"]),
+  gitaClassStatus: z.enum(["present", "absent", "no_class"]),
+  morningAratiAttended: z.boolean(),
+  eveningReadingMinutes: z.coerce.number().int().min(0).max(360),
+  libraryAttended: z.boolean(),
+  sevaMinutes: z.coerce.number().int().min(0).max(720),
   note: z.string().trim().max(500).transform((value) => value || null),
 });
+
+export const scoreSettingsSchema = z
+  .object({
+    sadhanaWeight: z.coerce.number().int().min(0).max(100),
+    studyWeight: z.coerce.number().int().min(0).max(100),
+    disciplineWeight: z.coerce.number().int().min(0).max(100),
+    sevaWeight: z.coerce.number().int().min(0).max(100),
+    chantingTargetRounds: z.coerce.number().int().min(1).max(108),
+    eveningReadingTargetMinutes: z.coerce.number().int().min(1).max(360),
+    studyTargetMinutes: z.coerce.number().int().min(1).max(1080),
+    wakeTargetTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+    bedtimeTargetTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+    sevaTargetMinutes: z.coerce.number().int().min(1).max(720),
+    disciplineGraceMinutes: z.coerce.number().int().min(1).max(360),
+    scoreStartDate: z.iso.date(),
+  })
+  .refine(
+    (value) => value.sadhanaWeight + value.studyWeight + value.disciplineWeight + value.sevaWeight === 100,
+    { message: "Category weights must total 100.", path: ["sadhanaWeight"] },
+  );
 
 export const alertSettingsSchema = z
   .object({

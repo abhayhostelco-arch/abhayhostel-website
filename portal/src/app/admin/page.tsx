@@ -69,7 +69,7 @@ export default async function AdminOverviewPage() {
         <div className="panel-title"><h2>Today’s completion</h2></div>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Student</th><th>Bedtime</th><th>Wake-up</th><th>Sleep</th><th>Study today</th><th>Rounds</th><th>Attendance</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Student</th><th>Bedtime</th><th>Wake-up</th><th>Sleep</th><th>Study today</th><th>Rounds</th><th>Gita class</th><th>Status</th><th></th></tr></thead>
             <tbody>
               {active.map((student) => {
                 const entry = todayEntryByStudent.get(student.id);
@@ -81,7 +81,7 @@ export default async function AdminOverviewPage() {
                     <td>{entry ? formatMinutes(sleepDurationMinutes(entry.sleep_time, entry.wake_time)) : "—"}</td>
                     <td>{entry ? formatMinutes(entry.study_minutes) : "—"}</td>
                     <td>{entry?.chanting_rounds ?? "—"}</td>
-                    <td>{entry ? entry.academy_status.replace("_", " ") : "—"}</td>
+                    <td>{entry ? entry.gita_class_status.replace("_", " ") : "—"}</td>
                     <td><span className={`status-pill ${submitted.has(student.id) ? "status-success" : "status-warning"}`}>{submitted.has(student.id) ? "Submitted" : "Pending"}</span></td>
                     <td><Link href={`/admin/students/${student.id}`}>View trends</Link></td>
                   </tr>
