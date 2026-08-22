@@ -62,6 +62,24 @@ async function main() {
   });
   if (error || !data.user) throw new Error("Super Admin creation failed.");
 
+  // Auth metadata can be applied after the auth.users insert trigger runs, so
+  // explicitly establish the sole privileged role before recording success.
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({
+      role: "super_admin",
+      full_name: env.BOOTSTRAP_SUPER_ADMIN_NAME,
+      email: env.BOOTSTRAP_SUPER_ADMIN_EMAIL,
+      joined_on: null,
+      is_active: true,
+      must_change_password: true,
+    })
+    .eq("id", data.user.id);
+  if (profileError) {
+    await supabase.auth.admin.updateUserById(data.user.id, { ban_duration: "876000h" });
+    throw new Error("Super Admin created but its profile could not be initialized.");
+  }
+
   const { error: auditError } = await supabase.from("audit_events").insert({
     actor_id: data.user.id,
     action: "super_admin_bootstrapped",

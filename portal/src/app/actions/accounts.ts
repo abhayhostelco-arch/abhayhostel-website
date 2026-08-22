@@ -85,6 +85,28 @@ export async function createAccountAction(
     return { status: "error", message: "The account could not be created." };
   }
 
+  // Supabase may insert auth.users before applying app_metadata. Set the
+  // authoritative profile explicitly so an Admin can never inherit the
+  // trigger's deny-safe student default.
+  const { error: profileError } = await admin
+    .from("profiles")
+    .update({
+      role: parsed.data.role,
+      full_name: parsed.data.fullName,
+      email: parsed.data.email,
+      phone: parsed.data.phone,
+      academy_label: parsed.data.role === "student" ? parsed.data.academyLabel : null,
+      joined_on: parsed.data.role === "student" ? parsed.data.joinedOn : null,
+      created_by: actor.id,
+      is_active: true,
+      must_change_password: true,
+    })
+    .eq("id", data.user.id);
+  if (profileError) {
+    await admin.auth.admin.updateUserById(data.user.id, { ban_duration: "876000h" });
+    return { status: "error", message: "The account could not be initialized." };
+  }
+
   await audit(actor.id, "account_created", data.user.id, { role: parsed.data.role });
   revalidatePath("/admin/students");
   revalidatePath("/admin/administrators");
