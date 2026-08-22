@@ -5,6 +5,7 @@ import {
   createAccountSchema,
   dailyEntrySchema,
   flattenErrors,
+  forgotPasswordSchema,
   loginSchema,
   passwordSchema,
   reportQuerySchema,
@@ -79,7 +80,21 @@ describe("account inputs", () => {
     expect(account.email).toBe("student@example.com");
     expect(account.phone).toBeNull();
     expect(account.academyLabel).toBe("Class 12");
-    expect(loginSchema.parse({ email: "A@EXAMPLE.COM", password: "x" }).email).toBe("a@example.com");
+    expect(loginSchema.parse({
+      email: "A@EXAMPLE.COM",
+      password: "x",
+      captchaToken: "verified-token",
+    }).email).toBe("a@example.com");
+  });
+
+  it("requires a CAPTCHA token for authentication requests", () => {
+    expect(loginSchema.safeParse({
+      email: "a@example.com",
+      password: "x",
+    }).success).toBe(false);
+    expect(forgotPasswordSchema.safeParse({
+      email: "a@example.com",
+    }).success).toBe(false);
   });
 
   it("checks matching passwords and boolean targets", () => {

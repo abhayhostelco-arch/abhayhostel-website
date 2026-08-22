@@ -12,12 +12,12 @@ export const passwordSchema = z
 export const loginSchema = z.object({
   email: z.email().trim().toLowerCase(),
   password: z.string().min(1).max(128),
-  captchaToken: z.string().max(4096).optional(),
+  captchaToken: z.string().min(1).max(4096),
 });
 
 export const forgotPasswordSchema = z.object({
   email: z.email().trim().toLowerCase(),
-  captchaToken: z.string().max(4096).optional(),
+  captchaToken: z.string().min(1).max(4096),
 });
 
 export const changePasswordSchema = z
