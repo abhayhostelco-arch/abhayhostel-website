@@ -263,6 +263,42 @@ a {
   line-height: 1.4;
 }
 
+.password-input {
+  position: relative;
+}
+
+.password-input input {
+  padding-right: 3rem;
+}
+
+.password-visibility-button {
+  position: absolute;
+  top: 50%;
+  right: 0.65rem;
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.password-visibility-button:hover {
+  color: var(--navy);
+}
+
+.password-visibility-button:focus-visible {
+  color: var(--navy);
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
 .field textarea {
   min-height: 110px;
   resize: vertical;
