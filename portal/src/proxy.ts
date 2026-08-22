@@ -16,12 +16,12 @@ function createCsp(): string {
 
   return [
     "default-src 'self'",
-    `script-src 'self' https://challenges.cloudflare.com 'unsafe-inline' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' https://challenges.cloudflare.com 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
     "style-src-attr 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self'",
-    `connect-src ${connectSources}`,
+    `connect-src ${connectSources} https://challenges.cloudflare.com`,
     "frame-src https://challenges.cloudflare.com",
     "object-src 'none'",
     "base-uri 'self'",

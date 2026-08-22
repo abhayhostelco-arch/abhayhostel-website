@@ -4,9 +4,3 @@ publish = ".next"
 
 [[plugins]]
 package = "@netlify/plugin-nextjs"
-
-[[plugins]]
-package = "@netlify/plugin-csp-nonce"
-  [plugins.inputs]
-  reportOnly = false
-  unsafeEval = false
