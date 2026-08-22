@@ -12,6 +12,7 @@ export interface Profile {
   is_active: boolean;
   must_change_password: boolean;
   created_by: string | null;
+  mentor_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -65,11 +66,66 @@ export interface AlertSettings {
   updated_at: string;
 }
 
+export interface SharedResource {
+  id: string;
+  title: string;
+  url: string;
+  category: string | null;
+  is_published: boolean;
+  created_at: string;
+}
+
+export interface WeeklyProgram {
+  id: string;
+  program_date: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface WeeklyProgramEntry {
+  id: string;
+  program_id: string;
+  student_id: string;
+  attendance: "present" | "absent";
+  wore_dhoti_kurta: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AttendancePerson {
+  id: string;
+  profile_id: string | null;
+  name: string;
+  phone: string | null;
+  notes: string | null;
+  is_active: boolean;
+}
+
+export interface AttendanceEvent {
+  id: string;
+  name: string;
+  status_options: string[];
+  is_active: boolean;
+}
+
+export interface AttendanceRecord {
+  id: string;
+  event_id: string;
+  person_id: string;
+  attendance_date: string;
+  status: string;
+  remark: string | null;
+}
+
 export type ActionState = {
   status: "idle" | "success" | "error";
   message?: string;
   fieldErrors?: Record<string, string[]>;
   temporaryPassword?: string;
+  analytics?: {
+    name: string;
+    params: Record<string, string | number | boolean | null>;
+  };
 };
 
 export const initialActionState: ActionState = { status: "idle" };

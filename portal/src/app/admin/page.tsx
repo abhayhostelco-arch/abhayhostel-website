@@ -1,96 +1,38 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BellRing, CheckCircle2, Clock3, Users } from "lucide-react";
+import { BellRing, CheckCircle2, Clock3, ShieldCheck, UserRoundX, Users } from "lucide-react";
+import { GrowthLeaderboard } from "@/components/growth-leaderboard";
 import { TrendChart } from "@/components/trend-chart";
-import { deriveAlerts, formatMinutes, sleepDurationMinutes } from "@/lib/analytics";
+import { deriveAlerts } from "@/lib/analytics";
 import { requireProfile } from "@/lib/auth";
 import { daysAgoInIndia, todayInIndia } from "@/lib/date";
-import { getAlertSettings, getEntries, getProfiles } from "@/lib/data";
+import { getAlertSettings, getEntries, getProfiles, getScoreSettings, getStudentLeaderboardSource } from "@/lib/data";
+import { buildGrowthReport } from "@/lib/growth-score";
 
-export const metadata: Metadata = { title: "Admin overview" };
+export const metadata: Metadata = { title: "Admin dashboard" };
 
-export default async function AdminOverviewPage() {
-  await requireProfile(["super_admin", "admin"]);
-  const [students, entries, settings] = await Promise.all([
-    getProfiles("student"),
-    getEntries({ startDate: daysAgoInIndia(29) }),
-    getAlertSettings(),
+export default async function AdminDashboard({ searchParams }: { searchParams: Promise<{ mentorId?: string }> }) {
+  await requireProfile(["super_admin"]);
+  const { mentorId } = await searchParams;
+  const start = daysAgoInIndia(6);
+  const today = todayInIndia();
+  const [students, mentors, entries, alertsSettings, scoreSettings, source] = await Promise.all([
+    getProfiles("student"), getProfiles("admin"), getEntries({ startDate: start }), getAlertSettings(), getScoreSettings(), getStudentLeaderboardSource(start),
   ]);
   const active = students.filter((student) => student.is_active);
-  const today = todayInIndia();
-  const todayEntries = entries.filter((entry) => entry.entry_date === today);
-  const todayEntryByStudent = new Map(todayEntries.map((entry) => [entry.student_id, entry]));
-  const submitted = new Set(todayEntries.map((entry) => entry.student_id));
-  const alerts = deriveAlerts(active, entries, settings, 7).slice(0, 6);
-  const chartData = Array.from({ length: 14 }, (_, index) => {
-    const date = daysAgoInIndia(13 - index);
-    const count = entries.filter((entry) => entry.entry_date === date).length;
-    return {
-      date: date.slice(5),
-      completion: active.length === 0 ? 0 : Math.round((count / active.length) * 100),
-    };
-  });
-
-  return (
-    <main className="page-container">
-      <header className="page-heading">
-        <div>
-          <p className="eyebrow">Hostel management</p>
-          <h1>Today at a glance</h1>
-          <p>Submission status and recent routine signals across active students.</p>
-        </div>
-        <Link className="button" href="/admin/students">Manage students</Link>
-      </header>
-      <section className="metric-grid">
-        <article className="metric-card"><span><Users size={14} /> Active students</span><strong>{active.length}</strong></article>
-        <article className="metric-card"><span><CheckCircle2 size={14} /> Submitted today</span><strong>{todayEntries.length}</strong></article>
-        <article className="metric-card"><span><Clock3 size={14} /> Missing today</span><strong>{Math.max(active.length - todayEntries.length, 0)}</strong></article>
-        <article className="metric-card"><span><BellRing size={14} /> Recent alerts</span><strong>{deriveAlerts(active, entries, settings, 7).length}</strong></article>
-      </section>
-      <section className="content-grid">
-        <article className="panel">
-          <div className="panel-title"><h2>14-day completion</h2></div>
-          <TrendChart data={chartData} mode="completion" />
-        </article>
-        <article className="panel">
-          <div className="panel-title"><h2>Latest alerts</h2><Link href="/admin/alerts">View all</Link></div>
-          <div className="alert-list">
-            {alerts.map((alert) => (
-              <div className="alert-item" key={alert.id}>
-                <BellRing size={18} color="#a63b32" aria-hidden="true" />
-                <div><strong>{alert.studentName}</strong><span>{alert.date} · {alert.message}</span></div>
-              </div>
-            ))}
-            {alerts.length === 0 ? <p className="empty-state">No recent alerts.</p> : null}
-          </div>
-        </article>
-      </section>
-      <section className="panel section-gap">
-        <div className="panel-title"><h2>Today’s completion</h2></div>
-        <div className="table-wrap">
-          <table>
-            <thead><tr><th>Student</th><th>Bedtime</th><th>Wake-up</th><th>Sleep</th><th>Study today</th><th>Rounds</th><th>Gita class</th><th>Status</th><th></th></tr></thead>
-            <tbody>
-              {active.map((student) => {
-                const entry = todayEntryByStudent.get(student.id);
-                return (
-                  <tr key={student.id}>
-                    <td><strong>{student.full_name}</strong><br /><small>{student.academy_label ?? student.email}</small></td>
-                    <td>{entry?.sleep_time.slice(0, 5) ?? "—"}</td>
-                    <td>{entry?.wake_time.slice(0, 5) ?? "—"}</td>
-                    <td>{entry ? formatMinutes(sleepDurationMinutes(entry.sleep_time, entry.wake_time)) : "—"}</td>
-                    <td>{entry ? formatMinutes(entry.study_minutes) : "—"}</td>
-                    <td>{entry?.chanting_rounds ?? "—"}</td>
-                    <td>{entry ? entry.gita_class_status.replace("_", " ") : "—"}</td>
-                    <td><span className={`status-pill ${submitted.has(student.id) ? "status-success" : "status-warning"}`}>{submitted.has(student.id) ? "Submitted" : "Pending"}</span></td>
-                    <td><Link href={`/admin/students/${student.id}`}>View trends</Link></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </main>
-  );
+  const report = buildGrowthReport(source.students, source.entries, scoreSettings, 7);
+  const allowedMentor = mentors.some((mentor) => mentor.id === mentorId) ? mentorId : undefined;
+  const poolIds = new Set(active.filter((student) => !allowedMentor || student.mentor_id === allowedMentor).map((student) => student.id));
+  const ranked = report.students.filter((student) => poolIds.has(student.studentId)).slice(0, 10);
+  const todayEntries = entries.filter((entry) => entry.entry_date === today && poolIds.has(entry.student_id));
+  const scopedStudents = active.filter((student) => poolIds.has(student.id));
+  const alerts = deriveAlerts(scopedStudents, entries, alertsSettings, 7).slice(0, 6);
+  const chartData = Array.from({ length: 7 }, (_, index) => { const date = daysAgoInIndia(6 - index); const count = entries.filter((entry) => entry.entry_date === date && poolIds.has(entry.student_id)).length; return { date: date.slice(5), completion: scopedStudents.length ? Math.round(count / scopedStudents.length * 100) : 0 }; });
+  return <main className="page-container">
+    <header className="page-heading hero-heading"><div><p className="eyebrow">Admin control centre</p><h1>Hostel overview</h1><p>Manage Mentors, assignments, submissions, and student growth.</p></div><Link className="button" href="/admin/students">Add or assign students</Link></header>
+    <section className="metric-grid metric-grid-five"><article className="metric-card"><span><Users size={15} /> Active students</span><strong>{active.length}</strong></article><article className="metric-card"><span><ShieldCheck size={15} /> Mentors</span><strong>{mentors.filter((m) => m.is_active).length}</strong></article><article className="metric-card"><span><CheckCircle2 size={15} /> Submitted today</span><strong>{todayEntries.length}</strong></article><article className="metric-card"><span><Clock3 size={15} /> Missing today</span><strong>{Math.max(scopedStudents.length - todayEntries.length, 0)}</strong></article><article className="metric-card"><span><UserRoundX size={15} /> Unassigned</span><strong>{active.filter((student) => !student.mentor_id).length}</strong></article></section>
+    <section className="dashboard-grid section-gap"><article className="panel"><div className="panel-title"><h2>7-day submission trend</h2></div><TrendChart data={chartData} mode="completion" /></article><article className="panel"><div className="panel-title"><h2>Mentor workload</h2><Link href="/admin/administrators">Manage Mentors</Link></div><div className="workload-list">{mentors.map((mentor) => <div key={mentor.id}><span>{mentor.full_name}</span><strong>{active.filter((student) => student.mentor_id === mentor.id).length} students</strong></div>)}</div></article></section>
+    <section className="panel section-gap"><div className="panel-title"><div><p className="eyebrow">Hostel scoreboard</p><h2>Top 10 · rolling 7 days</h2></div><form className="filters compact-filter" method="get"><div className="field"><label htmlFor="mentorId">Mentor</label><select id="mentorId" name="mentorId" defaultValue={allowedMentor ?? ""}><option value="">All Mentors</option>{mentors.map((mentor) => <option key={mentor.id} value={mentor.id}>{mentor.full_name}</option>)}</select></div><button className="button button-secondary button-small">Apply</button></form></div><GrowthLeaderboard students={ranked} /></section>
+    <section className="panel section-gap"><div className="panel-title"><h2>Latest alerts</h2><Link href="/admin/alerts">View all</Link></div><div className="alert-list">{alerts.map((alert) => <div className="alert-item" key={alert.id}><BellRing size={18} aria-hidden="true" /><div><strong>{alert.studentName}</strong><span>{alert.date} · {alert.message}</span></div></div>)}{!alerts.length ? <p className="empty-state">No recent alerts.</p> : null}</div></section>
+  </main>;
 }

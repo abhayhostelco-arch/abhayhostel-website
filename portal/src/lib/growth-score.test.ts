@@ -12,7 +12,7 @@ const settings: ScoreSettings = {
 const student = (id: string, name: string): Profile => ({
   id, role: "student", full_name: name, email: `${name.toLowerCase()}@example.com`, phone: null,
   academy_label: null, joined_on: "2026-01-01", is_active: true, must_change_password: false,
-  created_by: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
+  created_by: null, mentor_id: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
 });
 
 const entry = (studentId: string, overrides: Partial<DailyEntry> = {}): DailyEntry => ({
@@ -48,5 +48,13 @@ describe("Growth Score", () => {
     const report = buildGrowthReport([student("a", "Alpha"), student("b", "Beta"), inactive], [entry("a"), entry("b")], { ...settings, score_start_date: "2026-08-22" }, 1, new Date("2026-08-22T06:30:00Z"));
     expect(report.students.map((value) => value.rank)).toEqual([1, 1]);
     expect(report.students.map((value) => value.studentName)).not.toContain("Charlie");
+  });
+
+  it("supports a top-ten rolling leaderboard while retaining global ranks", () => {
+    const students = Array.from({ length: 12 }, (_, index) => student(String(index), `Student ${String(index).padStart(2, "0")}`));
+    const entries = students.map((value, index) => entry(value.id, { chanting_rounds: Math.max(0, 16 - index) }));
+    const report = buildGrowthReport(students, entries, { ...settings, score_start_date: "2026-08-22" }, 7, new Date("2026-08-22T06:30:00Z"));
+    expect(report.students.slice(0, 10)).toHaveLength(10);
+    expect(report.students[10].rank).toBeGreaterThanOrEqual(10);
   });
 });

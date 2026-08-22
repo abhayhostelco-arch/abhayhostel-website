@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(28);
+select plan(38);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -16,6 +16,9 @@ insert into public.daily_entries (student_id, entry_date, sleep_time, wake_time,
 values
   ('00000000-0000-4000-8000-000000000001', (now() at time zone 'Asia/Kolkata')::date, '22:00', '06:00', 240, 16, 'present'),
   ('00000000-0000-4000-8000-000000000002', (now() at time zone 'Asia/Kolkata')::date, '23:00', '07:00', 180, 8, 'absent');
+
+update public.profiles set mentor_id = '00000000-0000-4000-8000-000000000003'
+where id = '00000000-0000-4000-8000-000000000001';
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', true);
@@ -36,6 +39,10 @@ select throws_ok(
 select throws_ok(
   $$ insert into public.daily_entries (student_id, entry_date, sleep_time, wake_time, study_minutes, chanting_rounds, gita_class_status) values ('00000000-0000-4000-8000-000000000001', (now() at time zone 'Asia/Kolkata')::date - 90, '22:00', '06:00', 240, 16, 'present') $$,
   '42501', null, 'entry older than 89 days rejected by RLS'
+);
+select throws_ok(
+  $$ insert into public.daily_entries (student_id, entry_date, sleep_time, wake_time, study_minutes, chanting_rounds, gita_class_status) values ('00000000-0000-4000-8000-000000000001', (now() at time zone 'Asia/Kolkata')::date - 2, '22:00', '06:00', 240, 16, 'present') $$,
+  '42501', null, 'student cannot backfill earlier than yesterday'
 );
 select lives_ok(
   $$ update public.alert_settings set min_study_minutes = 120 $$,
@@ -78,10 +85,15 @@ select throws_ok(
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000003', true);
-select is((select count(*)::integer from public.daily_entries), 2, 'admin can report across students');
+select is((select count(*)::integer from public.daily_entries), 1, 'Mentor sees assigned-student entries only');
+select is((select count(*)::integer from public.profiles), 2, 'Mentor sees self and assigned student');
 select lives_ok(
   $$ update public.daily_entries set note = 'admin edit' $$,
-  'admin entry update is filtered by RLS'
+  'Mentor can correct assigned-student entries'
+);
+select lives_ok(
+  $$ insert into public.daily_entries (student_id, entry_date, sleep_time, wake_time, study_minutes, chanting_rounds, gita_class_status) values ('00000000-0000-4000-8000-000000000001', (now() at time zone 'Asia/Kolkata')::date - 1, '22:00', '06:00', 240, 16, 'present') $$,
+  'Mentor can backfill an assigned student within 90 days'
 );
 select lives_ok(
   $$ update public.alert_settings set min_study_minutes = 120 $$,
@@ -90,7 +102,7 @@ select lives_ok(
 select lives_ok($$ update public.score_settings set study_weight = 30 $$, 'admin score-settings update is filtered by RLS');
 
 reset role;
-select is((select count(*)::integer from public.daily_entries where note = 'admin edit'), 0, 'admin cannot alter student data');
+select is((select count(*)::integer from public.daily_entries where note = 'admin edit'), 1, 'Mentor correction persists for assigned student');
 select is((select min_study_minutes::integer from public.alert_settings), 240, 'admin cannot change global settings');
 select is((select study_weight::integer from public.score_settings), 25, 'admin cannot change score settings');
 update public.profiles set is_active = false where id = '00000000-0000-4000-8000-000000000001';
@@ -107,6 +119,29 @@ select lives_ok(
   'Super Admin can update score settings'
 );
 select is((select study_target_minutes::integer from public.score_settings), 300, 'Super Admin score-setting change is persisted');
+select is((select count(*)::integer from public.profiles), 4, 'Admin sees all portal profiles');
+select lives_ok(
+  $$ insert into public.shared_resources (title, url, category, created_by) values ('Bhagavad Gita', 'https://example.com/gita', 'Reading', '00000000-0000-4000-8000-000000000004') $$,
+  'Admin can publish a resource'
+);
+select lives_ok(
+  $$ insert into public.weekly_programs (program_date, created_by) values ((now() at time zone 'Asia/Kolkata')::date, '00000000-0000-4000-8000-000000000004') $$,
+  'Admin can open a Weekly Program'
+);
+select lives_ok(
+  $$ insert into public.attendance_events (name, created_by) values ('Sunday Program', '00000000-0000-4000-8000-000000000004') $$,
+  'Admin can create an attendance event'
+);
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', true);
+select is((select count(*)::integer from public.shared_resources), 1, 'Student can read published resources');
+select lives_ok(
+  $$ insert into public.weekly_program_entries (program_id, student_id, attendance, wore_dhoti_kurta) select id, '00000000-0000-4000-8000-000000000002', 'present', true from public.weekly_programs where is_active $$,
+  'Student can submit the active Weekly Program'
+);
+select is((select count(*)::integer from public.attendance_events), 1, 'Student can read attendance events without a shared password');
 
 select * from finish();
 rollback;

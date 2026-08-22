@@ -11,7 +11,7 @@ export default async function SettingsPage() {
   const [settings, scoreSettings] = await Promise.all([getAlertSettings(), getScoreSettings()]);
   return (
     <main className="page-container">
-      <header className="page-heading"><div><p className="eyebrow">Super Admin only</p><h1>Portal settings</h1><p>Manage alert rules and the transparent Growth Score rubric.</p></div></header>
+      <header className="page-heading"><div><p className="eyebrow">Admin only</p><h1>Portal settings</h1><p>Manage alert rules and the transparent Growth Score rubric.</p></div></header>
       <section className="panel narrow-panel"><div className="panel-title"><h2>Alert settings</h2></div><AlertSettingsForm settings={settings} /></section>
       <section className="panel narrow-panel section-gap"><div className="panel-title"><h2>Growth Score settings</h2></div><ScoreSettingsForm settings={scoreSettings} /></section>
     </main>

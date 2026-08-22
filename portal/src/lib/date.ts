@@ -15,6 +15,10 @@ export function isWithinEntryWindow(date: string, now = new Date()): boolean {
   return date >= daysAgoInIndia(89, now) && date <= todayInIndia(now);
 }
 
+export function isWithinStudentEntryWindow(date: string, now = new Date()): boolean {
+  return date >= daysAgoInIndia(1, now) && date <= todayInIndia(now);
+}
+
 export function displayDate(date: string): string {
   return new Intl.DateTimeFormat("en-IN", {
     day: "2-digit",

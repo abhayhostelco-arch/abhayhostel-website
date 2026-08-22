@@ -4,8 +4,10 @@ import { useActionState } from "react";
 import { UserPlus } from "lucide-react";
 import { createAccountAction } from "@/app/actions/accounts";
 import { initialActionState } from "@/lib/types";
+import type { Profile } from "@/lib/types";
+import { CopyableTemporaryPassword } from "@/components/copyable-temporary-password";
 
-export function AccountForm({ role }: { role: "admin" | "student" }) {
+export function AccountForm({ role, mentors = [] }: { role: "admin" | "student"; mentors?: Profile[] }) {
   const [state, action, pending] = useActionState(createAccountAction, initialActionState);
   return (
     <form action={action} className="split-form">
@@ -23,6 +25,13 @@ export function AccountForm({ role }: { role: "admin" | "student" }) {
           <div className="field">
             <label htmlFor="phone">Phone (optional)</label>
             <input id="phone" name="phone" type="tel" maxLength={30} />
+          </div>
+          <div className="field">
+            <label htmlFor="mentorId">Assigned Mentor</label>
+            <select id="mentorId" name="mentorId" required defaultValue="">
+              <option value="" disabled>Choose a Mentor</option>
+              {mentors.filter((mentor) => mentor.is_active).map((mentor) => <option key={mentor.id} value={mentor.id}>{mentor.full_name}</option>)}
+            </select>
           </div>
           <div className="field">
             <label htmlFor="academyLabel">Academy / class</label>
@@ -45,14 +54,16 @@ export function AccountForm({ role }: { role: "admin" | "student" }) {
         </p>
       ) : null}
       {state.temporaryPassword ? (
-        <p className="temporary-password full-span">
-          Temporary password: <strong>{state.temporaryPassword}</strong>
-        </p>
+        <CopyableTemporaryPassword
+          key={state.temporaryPassword}
+          password={state.temporaryPassword}
+          className="full-span"
+        />
       ) : null}
       <div className="full-span">
         <button className="button" type="submit" disabled={pending}>
           <UserPlus size={18} aria-hidden="true" />
-          {pending ? "Creating…" : `Create ${role} account`}
+          {pending ? "Creating…" : `Create ${role === "admin" ? "Mentor" : "Student"} account`}
         </button>
       </div>
     </form>

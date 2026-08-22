@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { KeyRound } from "lucide-react";
 import { resetAccountPasswordAction } from "@/app/actions/accounts";
 import { initialActionState } from "@/lib/types";
+import { CopyableTemporaryPassword } from "@/components/copyable-temporary-password";
 
 export function AccountResetForm({ targetId }: { targetId: string }) {
   const [state, action, pending] = useActionState(
@@ -22,9 +23,10 @@ export function AccountResetForm({ targetId }: { targetId: string }) {
         </p>
       ) : null}
       {state.temporaryPassword ? (
-        <p className="temporary-password">
-          Temporary password: <strong>{state.temporaryPassword}</strong>
-        </p>
+        <CopyableTemporaryPassword
+          key={state.temporaryPassword}
+          password={state.temporaryPassword}
+        />
       ) : null}
     </form>
   );

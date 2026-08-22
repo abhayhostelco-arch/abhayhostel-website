@@ -3,13 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { requireProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
-import { generateTemporaryPassword, hasRecentReauth, markRecentReauth } from "@/lib/security";
-import type { ActionState, AppRole, Profile } from "@/lib/types";
+import { generateTemporaryPassword } from "@/lib/security";
+import type { ActionState, Profile } from "@/lib/types";
 import {
   createAccountSchema,
+  assignMentorSchema,
   flattenErrors,
-  reauthenticateSchema,
   resetAccountSchema,
   targetAccountSchema,
 } from "@/lib/validation";
@@ -38,17 +37,17 @@ async function getTarget(targetId: string): Promise<Profile | null> {
   return data as Profile | null;
 }
 
-function canManage(actorRole: AppRole, target: Profile): boolean {
+function canManage(actor: Profile, target: Profile): boolean {
   if (target.role === "super_admin") return false;
-  if (actorRole === "super_admin") return true;
-  return actorRole === "admin" && target.role === "student";
+  if (actor.role === "super_admin") return true;
+  return actor.role === "admin" && target.role === "student" && target.mentor_id === actor.id;
 }
 
 export async function createAccountAction(
   _previous: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const actor = await requireProfile(["super_admin", "admin"]);
+  const actor = await requireProfile(["super_admin"]);
   const parsed = createAccountSchema.safeParse({
     role: formData.get("role"),
     fullName: formData.get("fullName"),
@@ -56,33 +55,107 @@ export async function createAccountAction(
     phone: formData.get("phone") ?? "",
     academyLabel: formData.get("academyLabel") ?? "",
     joinedOn: formData.get("joinedOn") || undefined,
+    mentorId: formData.get("mentorId") || undefined,
   });
   if (!parsed.success) {
     return { status: "error", fieldErrors: flattenErrors(parsed.error) };
   }
-  if (parsed.data.role === "admin" && actor.role !== "super_admin") {
-    return { status: "error", message: "You are not permitted to create an administrator." };
+  if (parsed.data.role === "student" && !parsed.data.mentorId) {
+    return { status: "error", message: "Choose a Mentor for the new student." };
   }
-  if (parsed.data.role === "admin" && !(await hasRecentReauth(actor.id))) {
-    return { status: "error", message: "Re-enter your password before creating an administrator." };
+  if (parsed.data.mentorId) {
+    const mentor = await getTarget(parsed.data.mentorId);
+    if (!mentor || mentor.role !== "admin" || !mentor.is_active) return { status: "error", message: "Choose an active Mentor." };
   }
 
   const password = generateTemporaryPassword();
   const admin = createAdminClient();
-  const { data, error } = await admin.auth.admin.createUser({
-    email: parsed.data.email,
-    password,
-    email_confirm: true,
+  const authMetadata = {
     app_metadata: { role: parsed.data.role, created_by: actor.id },
     user_metadata: {
       full_name: parsed.data.fullName,
       phone: parsed.data.phone,
       academy_label: parsed.data.role === "student" ? parsed.data.academyLabel : null,
       joined_on: parsed.data.role === "student" ? parsed.data.joinedOn : null,
+      mentor_id: parsed.data.role === "student" ? parsed.data.mentorId : null,
     },
+  };
+  const profileValues = {
+    role: parsed.data.role,
+    full_name: parsed.data.fullName,
+    email: parsed.data.email,
+    phone: parsed.data.phone,
+    academy_label: parsed.data.role === "student" ? parsed.data.academyLabel : null,
+    joined_on: parsed.data.role === "student" ? parsed.data.joinedOn : null,
+    mentor_id: parsed.data.role === "student" ? parsed.data.mentorId : null,
+    created_by: actor.id,
+    is_active: true,
+    must_change_password: true,
+  };
+  const { data: existingProfile } = await admin
+    .from("profiles")
+    .select("*")
+    .eq("email", parsed.data.email)
+    .maybeSingle();
+
+  if (existingProfile) {
+    const existing = existingProfile as Profile;
+    if (existing.is_active) {
+      return {
+        status: "error",
+        message: `A second account cannot use this email. It already belongs to an active ${existing.role === "admin" ? "Mentor" : "Student"} account.`,
+      };
+    }
+    if (existing.role !== parsed.data.role) {
+      return {
+        status: "error",
+        message: `This email belongs to an inactive ${existing.role === "admin" ? "Mentor" : "Student"} account. Reactivate it from the correct directory.`,
+      };
+    }
+    const { error: authError } = await admin.auth.admin.updateUserById(existing.id, {
+      password,
+      ban_duration: "none",
+      email_confirm: true,
+      ...authMetadata,
+    });
+    if (authError) {
+      return { status: "error", message: "The account exists, but its login could not be reactivated. Try Reactivate from the account directory." };
+    }
+    const { error: profileError } = await admin
+      .from("profiles")
+      .update(profileValues)
+      .eq("id", existing.id)
+      .eq("is_active", false);
+    if (profileError) {
+      await admin.auth.admin.updateUserById(existing.id, { ban_duration: "876000h" });
+      return { status: "error", message: "The login was restored, but its portal profile could not be updated. The account remains inactive." };
+    }
+    await audit(actor.id, "account_reactivated", existing.id, { role: parsed.data.role, restored_during_creation: true });
+    revalidatePath("/admin/students");
+    revalidatePath("/admin/administrators");
+    return {
+      status: "success",
+      message: "Existing inactive account restored. Copy the new temporary password now.",
+      temporaryPassword: password,
+    };
+  }
+
+  const { data, error } = await admin.auth.admin.createUser({
+    email: parsed.data.email,
+    password,
+    email_confirm: true,
+    ...authMetadata,
   });
   if (error || !data.user) {
-    return { status: "error", message: "The account could not be created." };
+    const duplicateEmail = error?.code === "email_exists"
+      || error?.code === "user_already_exists"
+      || /already (?:been )?(?:registered|exists)|already uses/i.test(error?.message ?? "");
+    return {
+      status: "error",
+      message: duplicateEmail
+        ? "A second account cannot use this email. It is already registered in authentication, but no matching portal profile was found. Restore the existing identity or use a different email."
+        : "The authentication service rejected account creation. Check the submitted details and try again.",
+    };
   }
 
   // Supabase may insert auth.users before applying app_metadata. Set the
@@ -90,17 +163,7 @@ export async function createAccountAction(
   // trigger's deny-safe student default.
   const { error: profileError } = await admin
     .from("profiles")
-    .update({
-      role: parsed.data.role,
-      full_name: parsed.data.fullName,
-      email: parsed.data.email,
-      phone: parsed.data.phone,
-      academy_label: parsed.data.role === "student" ? parsed.data.academyLabel : null,
-      joined_on: parsed.data.role === "student" ? parsed.data.joinedOn : null,
-      created_by: actor.id,
-      is_active: true,
-      must_change_password: true,
-    })
+    .update(profileValues)
     .eq("id", data.user.id);
   if (profileError) {
     await admin.auth.admin.updateUserById(data.user.id, { ban_duration: "876000h" });
@@ -125,8 +188,7 @@ export async function setAccountActiveAction(formData: FormData): Promise<void> 
   });
   if (!parsed.success || parsed.data.targetId === actor.id) return;
   const target = await getTarget(parsed.data.targetId);
-  if (!target || !canManage(actor.role, target)) return;
-  if (target.role === "admin" && !(await hasRecentReauth(actor.id))) return;
+  if (!target || !canManage(actor, target)) return;
 
   const admin = createAdminClient();
   if (parsed.data.active) {
@@ -170,16 +232,9 @@ export async function resetAccountPasswordAction(
   const parsed = resetAccountSchema.safeParse({ targetId: formData.get("targetId") });
   if (!parsed.success) return { status: "error", message: "Invalid account." };
   const target = await getTarget(parsed.data.targetId);
-  if (!target || !canManage(actor.role, target)) {
+  if (!target || !canManage(actor, target)) {
     return { status: "error", message: "The account cannot be reset." };
   }
-  if (!(await hasRecentReauth(actor.id))) {
-    return {
-      status: "error",
-      message: "Unlock credential resets on this page, then select Reset again.",
-    };
-  }
-
   const password = generateTemporaryPassword();
   const admin = createAdminClient();
   const { error } = await admin.auth.admin.updateUserById(target.id, { password });
@@ -196,20 +251,17 @@ export async function resetAccountPasswordAction(
   };
 }
 
-export async function reauthenticateAction(
-  _previous: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const actor = await requireProfile(["super_admin", "admin"]);
-  const parsed = reauthenticateSchema.safeParse({ password: formData.get("password") });
-  if (!parsed.success) return { status: "error", message: "Password verification failed." };
-
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
-    email: actor.email,
-    password: parsed.data.password,
-  });
-  if (error) return { status: "error", message: "Password verification failed." };
-  await markRecentReauth(actor.id);
-  return { status: "success", message: "Sensitive actions are unlocked for 15 minutes." };
+export async function assignStudentMentorAction(formData: FormData): Promise<void> {
+  const actor = await requireProfile(["super_admin"]);
+  const parsed = assignMentorSchema.safeParse({ studentId: formData.get("studentId"), mentorId: formData.get("mentorId") });
+  if (!parsed.success) return;
+  const [student, mentor] = await Promise.all([getTarget(parsed.data.studentId), getTarget(parsed.data.mentorId)]);
+  if (!student || student.role !== "student" || !mentor || mentor.role !== "admin" || !mentor.is_active) return;
+  const admin = createAdminClient();
+  const { error } = await admin.from("profiles").update({ mentor_id: mentor.id }).eq("id", student.id).eq("role", "student");
+  if (error) return;
+  await audit(actor.id, "mentor_assigned", student.id, { mentor_id: mentor.id });
+  revalidatePath("/admin");
+  revalidatePath("/admin/students");
+  revalidatePath("/mentor");
 }

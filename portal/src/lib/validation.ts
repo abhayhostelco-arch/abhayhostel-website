@@ -45,7 +45,10 @@ export const createAccountSchema = z.object({
   phone: optionalText(30),
   academyLabel: optionalText(120),
   joinedOn: z.iso.date().optional(),
+  mentorId: z.uuid().optional(),
 });
+
+export const assignMentorSchema = z.object({ studentId: z.uuid(), mentorId: z.uuid() });
 
 export const targetAccountSchema = z.object({
   targetId: z.uuid(),
@@ -53,10 +56,6 @@ export const targetAccountSchema = z.object({
 });
 
 export const resetAccountSchema = z.object({ targetId: z.uuid() });
-
-export const reauthenticateSchema = z.object({
-  password: z.string().min(1).max(128),
-});
 
 export const dailyEntrySchema = z.object({
   entryDate: z.iso.date(),
@@ -114,6 +113,26 @@ export const alertSettingsSchema = z
 export const reportQuerySchema = z.object({
   range: z.enum(["7", "30", "90"]).default("30"),
   studentId: z.uuid().optional(),
+});
+
+const safeUrl = z.url().max(2048).refine((value) => ["http:", "https:"].includes(new URL(value).protocol), "Use an HTTP or HTTPS link.");
+export const resourceSchema = z.object({
+  resourceId: z.uuid().optional(), title: z.string().trim().min(2).max(160),
+  url: safeUrl, category: optionalText(80), published: z.boolean(),
+});
+export const weeklyProgramSchema = z.object({ programDate: z.iso.date() });
+export const weeklyEntrySchema = z.object({
+  programId: z.uuid(), attendance: z.enum(["present", "absent"]), woreDhotiKurta: z.boolean(),
+});
+export const attendancePersonSchema = z.object({
+  name: z.string().trim().min(2).max(120), phone: optionalText(30), notes: optionalText(500), profileId: z.uuid().optional(),
+});
+export const attendanceEventSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  statuses: z.string().transform((value) => value.split(",").map((item) => item.trim()).filter(Boolean)).pipe(z.array(z.string().min(1).max(40)).min(1).max(8)),
+});
+export const attendanceRecordSchema = z.object({
+  eventId: z.uuid(), personId: z.uuid(), attendanceDate: z.iso.date(), status: z.string().trim().min(1).max(40), remark: optionalText(300),
 });
 
 export function flattenErrors(error: z.ZodError): Record<string, string[]> {

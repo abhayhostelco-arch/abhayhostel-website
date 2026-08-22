@@ -1,23 +1,22 @@
 import type { Metadata } from "next";
 import { AccountForm } from "@/components/account-form";
 import { AccountResetForm } from "@/components/account-reset-form";
-import { ReauthForm } from "@/components/reauth-form";
 import { RoleBadge } from "@/components/role-badge";
 import { setAccountActiveAction } from "@/app/actions/accounts";
 import { requireProfile } from "@/lib/auth";
 import { getProfiles } from "@/lib/data";
 
-export const metadata: Metadata = { title: "Administrators" };
+export const metadata: Metadata = { title: "Mentors" };
 
 export default async function AdministratorsPage() {
   const actor = await requireProfile(["super_admin"]);
-  const administrators = (await getProfiles()).filter((profile) => profile.role !== "student");
+  const administrators = (await getProfiles("admin"));
   return (
     <main className="page-container">
-      <header className="page-heading"><div><p className="eyebrow">Privileged access</p><h1>Administrators</h1><p>Confirm your password before changing privileged accounts.</p></div></header>
+      <header className="page-heading"><div><p className="eyebrow">Mentor accounts</p><h1>Mentors</h1><p>Create Mentor access and manage the people responsible for student groups.</p></div></header>
       <section className="content-grid">
         <article className="panel">
-          <div className="panel-title"><h2>Administrator directory</h2></div>
+          <div className="panel-title"><h2>Mentor directory</h2></div>
           <div className="table-wrap">
             <table>
               <thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
@@ -46,8 +45,7 @@ export default async function AdministratorsPage() {
           </div>
         </article>
         <div className="stack">
-          <aside className="panel"><div className="panel-title"><h2>Unlock sensitive actions</h2></div><ReauthForm /></aside>
-          <aside className="panel"><div className="panel-title"><h2>Create administrator</h2></div><AccountForm role="admin" /></aside>
+          <aside className="panel"><div className="panel-title"><h2>Create Mentor</h2></div><AccountForm role="admin" /></aside>
         </div>
       </section>
     </main>

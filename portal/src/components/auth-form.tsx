@@ -1,15 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useCallback, useState } from "react";
 import { Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
 import { loginAction } from "@/app/actions/auth";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 import { initialActionState } from "@/lib/types";
+import { useActionAnalytics } from "@/hooks/use-action-analytics";
 
 export function LoginForm() {
   const [state, action, pending] = useActionState(loginAction, initialActionState);
   const [showPassword, setShowPassword] = useState(false);
+  const [captchaReady, setCaptchaReady] = useState(false);
+  const handleCaptchaReady = useCallback((ready: boolean) => setCaptchaReady(ready), []);
+  useActionAnalytics(state);
 
   return (
     <div className="auth-card">
@@ -50,13 +54,16 @@ export function LoginForm() {
           </div>
           <p className="field-hint">Password must contain at least 14 characters.</p>
         </div>
-        <TurnstileWidget />
+        <TurnstileWidget
+          onReadyChange={handleCaptchaReady}
+          resetSignal={state.status !== "idle" ? state : undefined}
+        />
         {state.status === "error" && state.message ? (
           <p className="form-message form-error" role="alert">
             {state.message}
           </p>
         ) : null}
-        <button className="button" type="submit" disabled={pending}>
+        <button className="button" type="submit" disabled={pending || !captchaReady}>
           <LockKeyhole size={18} aria-hidden="true" />
           {pending ? "Signing in…" : "Sign in securely"}
         </button>

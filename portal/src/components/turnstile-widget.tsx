@@ -1,7 +1,7 @@
 "use client";
 
 import Script from "next/script";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type TurnstileApi = {
   render: (
@@ -15,6 +15,7 @@ type TurnstileApi = {
       theme: "light";
     },
   ) => string;
+  reset: (widgetId?: string) => void;
 };
 
 declare global {
@@ -23,9 +24,16 @@ declare global {
   }
 }
 
-export function TurnstileWidget() {
+export function TurnstileWidget({
+  onReadyChange,
+  resetSignal,
+}: {
+  onReadyChange?: (ready: boolean) => void;
+  resetSignal?: object;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const renderedRef = useRef(false);
+  const widgetIdRef = useRef<string | null>(null);
   const [token, setToken] = useState("");
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
@@ -33,16 +41,32 @@ export function TurnstileWidget() {
     if (!siteKey || !containerRef.current || !window.turnstile || renderedRef.current) {
       return;
     }
-    window.turnstile.render(containerRef.current, {
+    widgetIdRef.current = window.turnstile.render(containerRef.current, {
       sitekey: siteKey,
       action: "turnstile-spin-v1",
-      callback: setToken,
-      "expired-callback": () => setToken(""),
-      "error-callback": () => setToken(""),
+      callback: (value) => {
+        setToken(value);
+        onReadyChange?.(true);
+      },
+      "expired-callback": () => {
+        setToken("");
+        onReadyChange?.(false);
+      },
+      "error-callback": () => {
+        setToken("");
+        onReadyChange?.(false);
+      },
       theme: "light",
     });
     renderedRef.current = true;
-  }, [siteKey]);
+  }, [onReadyChange, siteKey]);
+
+  useEffect(() => {
+    if (!resetSignal || !widgetIdRef.current || !window.turnstile) return;
+    window.turnstile.reset(widgetIdRef.current);
+    setToken("");
+    onReadyChange?.(false);
+  }, [onReadyChange, resetSignal]);
 
   if (!siteKey) {
     return process.env.NODE_ENV === "development" ? (

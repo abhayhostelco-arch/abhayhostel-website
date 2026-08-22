@@ -3,6 +3,6 @@ import { PortalShell } from "@/components/portal-shell";
 import { requireProfile } from "@/lib/auth";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const profile = await requireProfile(["super_admin", "admin"]);
+  const profile = await requireProfile(["super_admin"]);
   return <PortalShell profile={profile}>{children}</PortalShell>;
 }

@@ -11,11 +11,13 @@ export function DailyEntryForm({
   entry,
   minDate,
   maxDate,
+  studentId,
 }: {
   selectedDate: string;
   entry?: DailyEntry;
   minDate: string;
   maxDate: string;
+  studentId?: string;
 }) {
   const [state, action, pending] = useActionState(
     saveDailyEntryAction,
@@ -26,6 +28,7 @@ export function DailyEntryForm({
 
   return (
     <form action={action} className="split-form">
+      {studentId ? <input type="hidden" name="studentId" value={studentId} /> : null}
       <div className="field">
         <label htmlFor="entryDate">Wake-up date</label>
         <input

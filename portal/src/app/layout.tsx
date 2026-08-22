@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { Inter } from "next/font/google";
+import { NavigationProgress } from "@/components/navigation-progress";
 import "./globals.css";
 
 const inter = Inter({
@@ -24,7 +25,10 @@ export default function RootLayout({
 }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en" className={inter.variable}>
-      <body>{children}</body>
+      <body>
+        <Suspense fallback={null}><NavigationProgress /></Suspense>
+        {children}
+      </body>
     </html>
   );
 }

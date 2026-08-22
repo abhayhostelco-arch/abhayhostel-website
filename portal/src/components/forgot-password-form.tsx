@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useCallback, useState } from "react";
 import { forgotPasswordAction } from "@/app/actions/auth";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 import { initialActionState } from "@/lib/types";
+import { useActionAnalytics } from "@/hooks/use-action-analytics";
 
 type ForgotPasswordFormProps = {
   invalidRecoveryLink?: boolean;
@@ -15,6 +16,9 @@ export function ForgotPasswordForm({ invalidRecoveryLink }: ForgotPasswordFormPr
     forgotPasswordAction,
     initialActionState,
   );
+  const [captchaReady, setCaptchaReady] = useState(false);
+  const handleCaptchaReady = useCallback((ready: boolean) => setCaptchaReady(ready), []);
+  useActionAnalytics(state);
 
   return (
     <div className="auth-card">
@@ -30,7 +34,10 @@ export function ForgotPasswordForm({ invalidRecoveryLink }: ForgotPasswordFormPr
           <label htmlFor="email">Email address</label>
           <input id="email" name="email" type="email" maxLength={254} required />
         </div>
-        <TurnstileWidget />
+        <TurnstileWidget
+          onReadyChange={handleCaptchaReady}
+          resetSignal={state.status !== "idle" ? state : undefined}
+        />
         {state.message ? (
           <p
             className={`form-message ${state.status === "error" ? "form-error" : "form-success"}`}
@@ -39,7 +46,7 @@ export function ForgotPasswordForm({ invalidRecoveryLink }: ForgotPasswordFormPr
             {state.message}
           </p>
         ) : null}
-        <button className="button" type="submit" disabled={pending}>
+        <button className="button" type="submit" disabled={pending || !captchaReady}>
           {pending ? "Requesting…" : "Send reset instructions"}
         </button>
       </form>

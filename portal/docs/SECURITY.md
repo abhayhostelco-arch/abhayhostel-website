@@ -4,14 +4,16 @@
 
 The browser is untrusted. Roles, user IDs, date ranges, sort choices, and account state are resolved or allowlisted on the server. Supabase RLS is the final authorization boundary, and server actions repeat role and ownership checks. The service-role key is server-only and reserved for Auth administration, profile state changes, immutable audit writes, and the authenticated student leaderboard calculation. The leaderboard response exposes names and calculated scores only, never peer contact details, notes, or raw routine records.
 
-Public registration is disabled. Temporary passwords are generated with cryptographic randomness, contain all required character groups, are returned once, and are never persisted or logged. Passwords require 14–128 characters with uppercase, lowercase, number, and symbol. Super Admin credential and Admin-management operations require password re-entry within 15 minutes. TOTP MFA remains the most important future upgrade.
+Public registration is disabled. Temporary passwords are generated with cryptographic randomness, contain all required character groups, are returned once, and are never persisted or logged. Passwords require 14–128 characters with uppercase, lowercase, number, and symbol. The sole internal `super_admin` is displayed as Admin; internal `admin` accounts are displayed as Mentors. Admin credential and Mentor-management operations require password re-entry within 15 minutes. TOTP MFA remains the most important future upgrade.
 
 ## Data controls
 
 - Every exposed table has forced RLS and explicitly limited grants.
 - Private security-definer functions use an empty `search_path`, schema-qualified names, and narrow execution grants.
 - Students can select and update only their own eligible entries. Admins have reporting read access but no entry write policy.
-- Growth Scores are derived on the server from stored entries and protected settings; browser-supplied scores are never accepted. Only the Super Admin can change the global rubric.
+- Growth Scores are derived on the server from stored entries and protected settings; browser-supplied scores are never accepted. Only Admin can change the global rubric.
+- Mentor access is restricted by `profiles.mentor_id` in server actions and PostgreSQL RLS. Students can edit only today and yesterday; Mentor/Admin corrections retain the audited 90-day window.
+- Shared Resources, Weekly Program, and Attendance use normal portal roles and RLS; no shared module password is accepted.
 - Inactive profiles disappear through RLS; Auth accounts are also banned on deactivation. History remains intact and there is no hard-delete UI.
 - The application and a database trigger both enforce the India-time 90-day window, maximum 16-hour sleep, 0–18-hour study duration, enum allowlists, and note limits.
 - The Supabase query builder uses parameterized filters. No user input is concatenated into SQL, ordering, function names, filenames, or redirects.

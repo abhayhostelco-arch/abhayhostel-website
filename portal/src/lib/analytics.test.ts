@@ -23,6 +23,7 @@ const student: Profile = {
   is_active: true,
   must_change_password: false,
   created_by: null,
+  mentor_id: null,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
 };

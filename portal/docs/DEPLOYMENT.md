@@ -33,7 +33,6 @@ If Netlify shows **Connect GitHub to complete setup**, first connect the GitHub 
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (Sensitive)
-- `REAUTH_SECRET` (at least 32 random bytes; Sensitive)
 
 Do not add bootstrap variables to Netlify. Deploy to the generated `*.netlify.app` URL first, verify login and security headers, and then attach `app.abhayhostel.in` in Domain management.
 
@@ -48,7 +47,7 @@ Netlify automatically provides network-wide DDoS protection for all sites and pl
 - Confirm the marketing root and its `index.html`, `robots.txt`, and `sitemap.xml` are unchanged by the portal deployment.
 - Test forced password change, every role boundary, deactivation, credential reset, daily-entry limits, XSS-like notes, formula-like CSV values, report caps, and recovery enumeration behavior.
 - Check desktop and mobile layouts and unauthenticated redirects; then test authenticated routes using non-production accounts.
-- Confirm source maps, responses, logs, and browser bundles contain no service key, reauthentication secret, passwords, or tokens.
+- Confirm source maps, responses, logs, and browser bundles contain no service key, passwords, or tokens.
 
 ## 5. Backups and maintenance
 

@@ -11,8 +11,41 @@ import {
   loginSchema,
 } from "@/lib/validation";
 import { getServerEnv } from "@/lib/env";
+import { homeForRole } from "@/lib/roles";
 
-const genericLoginError = "Unable to sign in with those details.";
+const genericLoginError = "The email or password is incorrect.";
+const captchaLoginError = "Security verification expired or was already used. Complete the refreshed check and try again.";
+
+function loginFailure(
+  reason: string,
+  message: string,
+  outcome: "failure" | "blocked" = "failure",
+): ActionState {
+  return {
+    status: "error",
+    message,
+    analytics: {
+      name: "auth_login",
+      params: { outcome, reason, verification_reset_required: true },
+    },
+  };
+}
+
+function passwordResetResult(
+  status: "success" | "error",
+  message: string,
+  outcome: "success" | "failure" | "blocked",
+  reason: string,
+): ActionState {
+  return {
+    status,
+    message,
+    analytics: {
+      name: "auth_password_reset",
+      params: { outcome, reason, verification_reset_required: true },
+    },
+  };
+}
 
 export async function loginAction(
   _previous: ActionState,
@@ -24,10 +57,13 @@ export async function loginAction(
     captchaToken: formData.get("captchaToken") || undefined,
   });
   if (!parsed.success) {
-    return { status: "error", message: genericLoginError };
+    const captchaToken = formData.get("captchaToken");
+    return typeof captchaToken !== "string" || !captchaToken
+      ? loginFailure("verification_missing", "Complete the security verification before signing in.", "blocked")
+      : loginFailure("invalid_input", genericLoginError);
   }
 
-  let destination: "/change-password" | "/student" | "/admin";
+  let destination: string;
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -37,27 +73,37 @@ export async function loginAction(
         ? { captchaToken: parsed.data.captchaToken }
         : undefined,
     });
-    if (error || !data.user) return { status: "error", message: genericLoginError };
+    if (error || !data.user) {
+      if (error?.code === "captcha_failed") {
+        return loginFailure("verification_expired", captchaLoginError, "blocked");
+      }
+      if (error?.code === "over_request_rate_limit" || error?.status === 429) {
+        return loginFailure("rate_limited", "Too many sign-in attempts. Wait a few minutes, then complete a new security check and try again.", "blocked");
+      }
+      return loginFailure("invalid_credentials", genericLoginError);
+    }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await createAdminClient()
       .from("profiles")
       .select("*")
       .eq("id", data.user.id)
       .maybeSingle();
 
-    if (!profile || !profile.is_active) {
+    if (profileError || !profile) {
       await supabase.auth.signOut();
-      return { status: "error", message: genericLoginError };
+      return loginFailure("profile_unavailable", "Your login was accepted, but the portal profile could not be loaded. Try again shortly.");
+    }
+    if (!profile.is_active) {
+      await supabase.auth.signOut();
+      return loginFailure("account_inactive", "This account is inactive. Ask an Admin or assigned Mentor to reactivate it.", "blocked");
     }
 
     const typedProfile = profile as Profile;
     destination = typedProfile.must_change_password
       ? "/change-password"
-      : typedProfile.role === "student"
-        ? "/student"
-        : "/admin";
+      : homeForRole(typedProfile.role);
   } catch {
-    return { status: "error", message: genericLoginError };
+    return loginFailure("service_unavailable", "The sign-in service is temporarily unavailable. Try again shortly.");
   }
   redirect(destination);
 }
@@ -74,7 +120,7 @@ export async function forgotPasswordAction(
     captchaToken.length === 0 ||
     captchaToken.length > 4096
   ) {
-    return { status: "error", message: captchaError };
+    return passwordResetResult("error", captchaError, "blocked", "verification_missing");
   }
 
   const parsed = forgotPasswordSchema.safeParse({
@@ -83,7 +129,7 @@ export async function forgotPasswordAction(
   });
   const message =
     "If that email belongs to an active account, password-reset instructions will be sent.";
-  if (!parsed.success) return { status: "success", message };
+  if (!parsed.success) return passwordResetResult("success", message, "failure", "invalid_input");
 
   try {
     const env = getServerEnv();
@@ -93,19 +139,19 @@ export async function forgotPasswordAction(
       .eq("email", parsed.data.email)
       .eq("is_active", true)
       .maybeSingle();
-    if (!activeProfile) return { status: "success", message };
+    if (!activeProfile) return passwordResetResult("success", message, "success", "request_accepted");
     const supabase = await createClient();
     const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
       redirectTo: `${env.NEXT_PUBLIC_APP_URL}/auth/callback`,
       captchaToken: parsed.data.captchaToken,
     });
     if (error?.code === "captcha_failed") {
-      return { status: "error", message: captchaError };
+      return passwordResetResult("error", captchaError, "blocked", "verification_expired");
     }
   } catch {
     // Deliberately return the same response to prevent account enumeration.
   }
-  return { status: "success", message };
+  return passwordResetResult("success", message, "success", "request_accepted");
 }
 
 export async function changePasswordAction(

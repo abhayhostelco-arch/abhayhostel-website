@@ -9,7 +9,7 @@ import { getAlertSettings, getEntries, getProfiles } from "@/lib/data";
 export const metadata: Metadata = { title: "Alerts" };
 
 export default async function AlertsPage({ searchParams }: { searchParams: Promise<{ range?: string; type?: string }> }) {
-  await requireProfile(["super_admin", "admin"]);
+  const actor = await requireProfile(["super_admin", "admin"]);
   const params = await searchParams;
   const range = params.range === "30" || params.range === "90" ? Number(params.range) : 7;
   const allowedTypes = ["all", "missing", "sleep", "study", "absence"];
@@ -31,7 +31,7 @@ export default async function AlertsPage({ searchParams }: { searchParams: Promi
           {alerts.map((alert) => (
             <article className="alert-item" key={alert.id}>
               <BellRing size={19} color="#a63b32" aria-hidden="true" />
-              <div><strong><Link href={`/admin/students/${alert.studentId}`}>{alert.studentName}</Link></strong><span>{displayDate(alert.date)} · {alert.type} · {alert.message}</span></div>
+              <div><strong><Link href={`${actor.role === "admin" ? "/mentor" : "/admin"}/students/${alert.studentId}`}>{alert.studentName}</Link></strong><span>{displayDate(alert.date)} · {alert.type} · {alert.message}</span></div>
             </article>
           ))}
           {alerts.length === 0 ? <p className="empty-state">No alerts match these filters.</p> : null}

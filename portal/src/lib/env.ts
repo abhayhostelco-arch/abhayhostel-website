@@ -7,7 +7,6 @@ const serverSchema = z.object({
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(20),
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(10),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
-  REAUTH_SECRET: z.string().min(32),
 }).superRefine((env, context) => {
   if (process.env.NODE_ENV !== "production") return;
   if (env.NEXT_PUBLIC_APP_URL !== "https://app.abhayhostel.in") {

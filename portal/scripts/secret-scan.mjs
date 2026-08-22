@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const root = execFileSync("git", ["rev-parse", "--show-toplevel"], {
@@ -18,7 +18,9 @@ const signatures = [
 const findings = [];
 
 for (const file of files) {
-  const content = readFileSync(join(root, file));
+  const path = join(root, file);
+  if (!existsSync(path)) continue;
+  const content = readFileSync(path);
   if (content.includes(0)) continue;
   const text = content.toString("utf8");
   if (signatures.some((signature) => signature.test(text))) findings.push(file);

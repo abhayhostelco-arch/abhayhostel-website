@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { hasPublicSupabaseEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import type { AppRole, Profile } from "@/lib/types";
+import { homeForRole } from "@/lib/roles";
 
 export async function getCurrentProfile(): Promise<Profile | null> {
   if (!hasPublicSupabaseEnv()) return null;
@@ -32,7 +33,7 @@ export async function requireProfile(roles?: AppRole[]): Promise<Profile> {
   if (!profile) redirect("/login");
   if (profile.must_change_password) redirect("/change-password");
   if (roles && !roles.includes(profile.role)) {
-    redirect(profile.role === "student" ? "/student" : "/admin");
+    redirect(homeForRole(profile.role));
   }
   return profile;
 }
