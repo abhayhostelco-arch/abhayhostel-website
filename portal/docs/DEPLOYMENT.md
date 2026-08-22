@@ -35,6 +35,8 @@ Import this GitHub repository as a new Vercel project and set **Root Directory**
 
 Do not add bootstrap variables to Vercel. Deploy, verify the security headers, and attach `app.abhayhostel.in`. Add the DNS record Vercel specifies without changing the apex/root marketing-site records.
 
+Before changing DNS, inspect the owner's existing Cloudflare Pages, Workers, static-site, and DNS configuration. The current marketing deployment may already depend on Cloudflare. Preserve all apex (`abhayhostel.in`) and `www` records and routes; add only the new `app` record after confirming it does not overlap an existing Pages custom domain, Worker route, redirect, or wildcard record.
+
 Use the strongest free Vercel Firewall controls available: restrict unexpected methods, challenge obvious bot/automation traffic, and use Attack Challenge Mode during an active Layer-7 incident. Vercel provides automatic network/application DDoS mitigation; Supabase protects its edge, but neither removes the need for query caps and incident monitoring. If automated abuse persists, the first paid upgrades are WAF rate limiting and managed OWASP rules.
 
 ## 4. Launch checks
