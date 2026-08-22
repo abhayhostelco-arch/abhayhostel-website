@@ -10,7 +10,7 @@ In Authentication settings:
 2. Set the site URL to `https://app.abhayhostel.in` and allow only `https://app.abhayhostel.in/change-password` as the recovery redirect.
 3. Require 14 characters with lower/upper letters, digits, and symbols. Enable leaked-password detection if the project plan exposes it.
 4. Keep email verification/recovery throttles conservative (start with one request per 60 seconds and review abuse logs).
-5. Configure a Cloudflare Turnstile secret under Auth CAPTCHA and enable CAPTCHA. Use the matching public site key in Vercel.
+5. Configure a Cloudflare Turnstile secret under Auth CAPTCHA and enable CAPTCHA. Use the matching public site key in Netlify.
 6. Enforce SSL, restrict direct PostgreSQL connections to trusted administrative IPs, and use the pooler for approved operational tools.
 7. Run Database Linter/Security Advisor and resolve all exposed-table, RLS, function, and mutable-search-path findings.
 
@@ -22,9 +22,11 @@ Create a Managed Turnstile widget restricted to `app.abhayhostel.in` (add `local
 
 No Turnstile resource is created automatically by this repository because external account changes require the owner’s credentials and confirmation.
 
-## 3. Vercel
+## 3. Netlify
 
-Import this GitHub repository as a new Vercel project and set **Root Directory** to `portal`. Keep the existing marketing-site project unchanged. Add these Production environment variables:
+Create a **separate Netlify project** from the same GitHub repository. Do not reuse or modify the existing `abhayhostel.in` project. Set **Base directory** to `portal`; Netlify will detect Next.js and use its maintained OpenNext adapter. Use `npm run build` as the build command and leave the publish directory on the detected Next.js default. Do not use drag-and-drop deployment because the portal requires server rendering, Server Actions, middleware, and Route Handlers.
+
+If Netlify shows **Connect GitHub to complete setup**, first connect the GitHub account under Team settings > Connected accounts. Then import `abhayhostelco-arch/abhayhostel-website` as the new portal project. Add these Production environment variables:
 
 - `NEXT_PUBLIC_APP_URL=https://app.abhayhostel.in`
 - `NEXT_PUBLIC_SUPABASE_URL`
@@ -33,11 +35,11 @@ Import this GitHub repository as a new Vercel project and set **Root Directory**
 - `SUPABASE_SERVICE_ROLE_KEY` (Sensitive)
 - `REAUTH_SECRET` (at least 32 random bytes; Sensitive)
 
-Do not add bootstrap variables to Vercel. Deploy, verify the security headers, and attach `app.abhayhostel.in`. Add the DNS record Vercel specifies without changing the apex/root marketing-site records.
+Do not add bootstrap variables to Netlify. Deploy to the generated `*.netlify.app` URL first, verify login and security headers, and then attach `app.abhayhostel.in` in Domain management.
 
-The verified existing topology is: GoDaddy authoritative DNS (`ns51/ns52.domaincontrol.com`) and Netlify hosting for the static marketing site (`www` points to `ephemeral-tarsier-d3f397.netlify.app`; the apex is served by Netlify). Preserve the apex (`abhayhostel.in`) and `www` records. After Vercel supplies the target, add only the new `app` record in GoDaddy DNS. Cloudflare is used only for the portal's Turnstile widget unless the owner explicitly changes this architecture.
+The verified existing topology is: GoDaddy authoritative DNS (`ns51/ns52.domaincontrol.com`) and Netlify hosting for the static marketing site (`www` points to `ephemeral-tarsier-d3f397.netlify.app`; the apex is served by Netlify). Preserve the apex (`abhayhostel.in`) and `www` records. After the new Netlify project supplies its `*.netlify.app` target, add only a CNAME record named `app` in GoDaddy DNS pointing to that target. Cloudflare is used only for the portal's Turnstile widget unless the owner explicitly changes this architecture.
 
-Use the strongest free Vercel Firewall controls available: restrict unexpected methods, challenge obvious bot/automation traffic, and use Attack Challenge Mode during an active Layer-7 incident. Vercel provides automatic network/application DDoS mitigation; Supabase protects its edge, but neither removes the need for query caps and incident monitoring. If automated abuse persists, the first paid upgrades are WAF rate limiting and managed OWASP rules.
+Netlify automatically provides network-wide DDoS protection for all sites and plans. Keep Turnstile enabled and retain the application's request-size, query, export, and date-range caps. Free Netlify accounts can define a limited number of code-based rate-limit rules; add them only after validating that they do not block legitimate shared-network users. Netlify WAF is an Enterprise/High Performance Edge feature, so a paid WAF or an additional security proxy is the first infrastructure upgrade if sustained automated abuse appears.
 
 ## 4. Launch checks
 

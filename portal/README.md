@@ -4,7 +4,7 @@ Secure student routine tracking for `app.abhayhostel.in`. This Next.js applicati
 
 ## Stack and features
 
-- Next.js App Router, TypeScript, Supabase Auth/PostgreSQL, and Vercel
+- Next.js App Router, TypeScript, Supabase Auth/PostgreSQL, and Netlify
 - `super_admin`, `admin`, and `student` authorization enforced in server code and PostgreSQL RLS
 - Daily wake-up records, 90-day history, reports, derived alerts, and formula-safe CSV exports
 - No public registration or hard-delete UI; forced first-login password changes and recent reauthentication for sensitive operations

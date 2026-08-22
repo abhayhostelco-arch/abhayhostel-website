@@ -34,8 +34,9 @@ yarn-error.log*
 .env*
 !.env.example
 
-# vercel
+# hosting-provider local metadata
 .vercel
+.netlify
 
 # test output
 coverage/

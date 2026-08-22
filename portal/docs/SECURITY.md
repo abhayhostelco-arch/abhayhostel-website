@@ -26,4 +26,4 @@ React escapes student text, and the codebase does not use `dangerouslySetInnerHT
 
 `npm run verify` runs lint, type checking, unit/security tests, and a production build. `supabase test db` runs RLS tests for cross-student access, forged writes, admin read-only access, settings privilege, inactive users, and date boundaries. GitHub Actions additionally runs audit, secret scanning, and CodeQL.
 
-Before every release, review dependency changes, run the Supabase Security Advisor, confirm leaked-password protection and CAPTCHA, inspect Vercel/Supabase logs for abnormal failures without copying personal data into tickets, and exercise all roles in a staging project.
+Before every release, review dependency changes, run the Supabase Security Advisor, confirm leaked-password protection and CAPTCHA, inspect Netlify/Supabase logs for abnormal failures without copying personal data into tickets, and exercise all roles in a staging project.

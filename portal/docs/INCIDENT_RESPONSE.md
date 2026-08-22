@@ -3,9 +3,9 @@
 ## Immediate triage
 
 1. Record the time, affected route/account, observed status codes, and request IDs—never copy passwords, cookies, tokens, notes, or phone numbers into the incident record.
-2. If traffic is overwhelming the portal, enable Vercel Attack Challenge Mode, tighten free firewall rules, and temporarily disable the affected unauthenticated flow if necessary.
-3. For suspected credential abuse, deactivate the account, rotate its password, revoke sessions from Supabase Auth, and require password change. For a suspected service-key or reauthentication-secret leak, rotate it immediately in Supabase/Vercel and redeploy.
-4. For suspected data access, preserve Vercel, Supabase Auth, PostgreSQL, and audit-event evidence. Restrict direct database access and do not modify audit rows.
+2. If traffic is overwhelming the portal, review Netlify traffic and function logs, apply a narrowly scoped rate-limit rule where available, and temporarily disable the affected unauthenticated flow if necessary. Contact Netlify support during a sustained platform-level attack.
+3. For suspected credential abuse, deactivate the account, rotate its password, revoke sessions from Supabase Auth, and require password change. For a suspected service-key or reauthentication-secret leak, rotate it immediately in Supabase/Netlify and redeploy.
+4. For suspected data access, preserve Netlify, Supabase Auth, PostgreSQL, and audit-event evidence. Restrict direct database access and do not modify audit rows.
 
 ## Containment and recovery
 
