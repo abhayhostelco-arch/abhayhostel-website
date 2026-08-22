@@ -7,7 +7,7 @@ Create a production project in an India-near region when available. In `portal/`
 In Authentication settings:
 
 1. Disable new-user signup and anonymous sign-ins.
-2. Set the site URL to `https://app.abhayhostel.in` and allow only `https://app.abhayhostel.in/change-password` as the recovery redirect.
+2. Set the site URL to `https://app.abhayhostel.in` and allow only `https://app.abhayhostel.in/auth/callback` as the recovery redirect. The callback exchanges Supabase's one-time recovery code for a secure session before sending the user to `/change-password`.
 3. Require 14 characters with lower/upper letters, digits, and symbols. Enable leaked-password detection if the project plan exposes it.
 4. Keep email verification/recovery throttles conservative (start with one request per 60 seconds and review abuse logs).
 5. Configure a Cloudflare Turnstile secret under Auth CAPTCHA and enable CAPTCHA. Use the matching public site key in Netlify.

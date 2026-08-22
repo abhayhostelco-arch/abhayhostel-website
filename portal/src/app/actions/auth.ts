@@ -96,7 +96,7 @@ export async function forgotPasswordAction(
     if (!activeProfile) return { status: "success", message };
     const supabase = await createClient();
     const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-      redirectTo: `${env.NEXT_PUBLIC_APP_URL}/change-password`,
+      redirectTo: `${env.NEXT_PUBLIC_APP_URL}/auth/callback`,
       captchaToken: parsed.data.captchaToken,
     });
     if (error?.code === "captcha_failed") {

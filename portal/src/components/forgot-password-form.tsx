@@ -6,7 +6,11 @@ import { forgotPasswordAction } from "@/app/actions/auth";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 import { initialActionState } from "@/lib/types";
 
-export function ForgotPasswordForm() {
+type ForgotPasswordFormProps = {
+  invalidRecoveryLink?: boolean;
+};
+
+export function ForgotPasswordForm({ invalidRecoveryLink }: ForgotPasswordFormProps) {
   const [state, action, pending] = useActionState(
     forgotPasswordAction,
     initialActionState,
@@ -16,6 +20,11 @@ export function ForgotPasswordForm() {
     <div className="auth-card">
       <h2>Reset password</h2>
       <p>Enter your account email. The response will not reveal account status.</p>
+      {invalidRecoveryLink ? (
+        <p className="form-message form-error" role="alert">
+          This password-reset link is invalid or has expired. Request a new one below.
+        </p>
+      ) : null}
       <form action={action} className="form-stack">
         <div className="field">
           <label htmlFor="email">Email address</label>

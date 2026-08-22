@@ -9,7 +9,7 @@ max_rows = 5000
 [auth]
 enabled = true
 site_url = "http://localhost:3000"
-additional_redirect_urls = ["http://localhost:3000/change-password"]
+additional_redirect_urls = ["http://localhost:3000/auth/callback"]
 enable_signup = false
 minimum_password_length = 14
 password_requirements = "lower_upper_letters_digits_symbols"

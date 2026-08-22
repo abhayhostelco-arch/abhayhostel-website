@@ -4,10 +4,17 @@ import { ForgotPasswordForm } from "@/components/forgot-password-form";
 
 export const metadata: Metadata = { title: "Reset password" };
 
-export default function ForgotPasswordPage() {
+type ForgotPasswordPageProps = {
+  searchParams: Promise<{ error?: string }>;
+};
+
+export default async function ForgotPasswordPage({
+  searchParams,
+}: ForgotPasswordPageProps) {
+  const { error } = await searchParams;
   return (
     <AuthShell>
-      <ForgotPasswordForm />
+      <ForgotPasswordForm invalidRecoveryLink={error === "invalid-recovery-link"} />
     </AuthShell>
   );
 }
