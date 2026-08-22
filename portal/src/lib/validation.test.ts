@@ -9,6 +9,7 @@ import {
   loginSchema,
   passwordSchema,
   reportQuerySchema,
+  scoreSettingsSchema,
   targetAccountSchema,
 } from "@/lib/validation";
 
@@ -28,7 +29,12 @@ describe("daily entry validation", () => {
       wakeTime: "06:15",
       studyHours: "4",
       studyMinutes: "30",
-      academyStatus: "present",
+      chantingRounds: "16",
+      gitaClassStatus: "present",
+      morningAratiAttended: true,
+      eveningReadingMinutes: 30,
+      libraryAttended: true,
+      sevaMinutes: 60,
       note: "   ",
     });
     expect(result.note).toBeNull();
@@ -41,9 +47,42 @@ describe("daily entry validation", () => {
       wakeTime: "06:00",
       studyHours: 19,
       studyMinutes: 0,
-      academyStatus: "holiday",
+      chantingRounds: 109,
+      gitaClassStatus: "holiday",
       note: "x".repeat(501),
     }).success).toBe(false);
+  });
+
+  it("requires whole chanting rounds between 0 and 108", () => {
+    const validEntry = {
+      entryDate: "2026-08-22",
+      sleepTime: "22:30",
+      wakeTime: "06:00",
+      studyHours: 4,
+      studyMinutes: 0,
+      gitaClassStatus: "present",
+      morningAratiAttended: true,
+      eveningReadingMinutes: 30,
+      libraryAttended: true,
+      sevaMinutes: 60,
+      note: "",
+    };
+    expect(dailyEntrySchema.safeParse({ ...validEntry, chantingRounds: 0 }).success).toBe(true);
+    expect(dailyEntrySchema.safeParse({ ...validEntry, chantingRounds: 108 }).success).toBe(true);
+    expect(dailyEntrySchema.safeParse({ ...validEntry, chantingRounds: "" }).success).toBe(false);
+    expect(dailyEntrySchema.safeParse({ ...validEntry, chantingRounds: 1.5 }).success).toBe(false);
+    expect(dailyEntrySchema.safeParse({ ...validEntry, chantingRounds: -1 }).success).toBe(false);
+    expect(dailyEntrySchema.safeParse({ ...validEntry, chantingRounds: 109 }).success).toBe(false);
+  });
+
+  it("rejects negative or oversized scoring activity values", () => {
+    const base = {
+      entryDate: "2026-08-22", sleepTime: "22:30", wakeTime: "06:00", studyHours: 4,
+      studyMinutes: 0, chantingRounds: 16, gitaClassStatus: "present", morningAratiAttended: true,
+      eveningReadingMinutes: 30, libraryAttended: true, sevaMinutes: 60, note: "",
+    };
+    expect(dailyEntrySchema.safeParse({ ...base, eveningReadingMinutes: -1 }).success).toBe(false);
+    expect(dailyEntrySchema.safeParse({ ...base, sevaMinutes: 721 }).success).toBe(false);
   });
 });
 
@@ -64,6 +103,17 @@ describe("settings and report input", () => {
     expect(reportQuerySchema.parse({ range: "90" }).range).toBe("90");
     expect(reportQuerySchema.safeParse({ range: "365" }).success).toBe(false);
     expect(reportQuerySchema.safeParse({ range: "30", studentId: "x' OR 1=1--" }).success).toBe(false);
+  });
+
+  it("requires Growth Score category weights to total 100", () => {
+    const valid = {
+      sadhanaWeight: 40, studyWeight: 25, disciplineWeight: 20, sevaWeight: 15,
+      chantingTargetRounds: 16, eveningReadingTargetMinutes: 30, studyTargetMinutes: 240,
+      wakeTargetTime: "06:00", bedtimeTargetTime: "22:30", sevaTargetMinutes: 60,
+      disciplineGraceMinutes: 120, scoreStartDate: "2026-08-22",
+    };
+    expect(scoreSettingsSchema.safeParse(valid).success).toBe(true);
+    expect(scoreSettingsSchema.safeParse({ ...valid, studyWeight: 30 }).success).toBe(false);
   });
 });
 

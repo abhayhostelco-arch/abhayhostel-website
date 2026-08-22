@@ -174,7 +174,10 @@ export async function resetAccountPasswordAction(
     return { status: "error", message: "The account cannot be reset." };
   }
   if (!(await hasRecentReauth(actor.id))) {
-    return { status: "error", message: "Re-enter your password before resetting credentials." };
+    return {
+      status: "error",
+      message: "Unlock credential resets on this page, then select Reset again.",
+    };
   }
 
   const password = generateTemporaryPassword();

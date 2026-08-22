@@ -38,62 +38,44 @@ export function DailyEntryForm({
           required
         />
       </div>
-      <div className="field">
-        <label htmlFor="academyStatus">Academy attendance</label>
-        <select
-          id="academyStatus"
-          name="academyStatus"
-          defaultValue={entry?.academy_status ?? "present"}
-        >
-          <option value="present">Present</option>
-          <option value="absent">Absent</option>
-          <option value="no_class">No class</option>
-        </select>
-      </div>
-      <div className="field">
-        <label htmlFor="sleepTime">Previous night sleep time</label>
-        <input
-          id="sleepTime"
-          name="sleepTime"
-          type="time"
-          defaultValue={entry?.sleep_time.slice(0, 5) ?? "22:30"}
-          required
-        />
-      </div>
-      <div className="field">
-        <label htmlFor="wakeTime">Wake-up time</label>
-        <input
-          id="wakeTime"
-          name="wakeTime"
-          type="time"
-          defaultValue={entry?.wake_time.slice(0, 5) ?? "06:00"}
-          required
-        />
-      </div>
-      <div className="field">
-        <label htmlFor="studyHours">Study hours</label>
-        <input
-          id="studyHours"
-          name="studyHours"
-          type="number"
-          min={0}
-          max={18}
-          defaultValue={hours}
-          required
-        />
-      </div>
-      <div className="field">
-        <label htmlFor="studyMinutes">Additional minutes</label>
-        <input
-          id="studyMinutes"
-          name="studyMinutes"
-          type="number"
-          min={0}
-          max={59}
-          defaultValue={minutes}
-          required
-        />
-      </div>
+      <fieldset className="routine-section full-span">
+        <legend>🕉️ Sadhana</legend>
+        <div className="split-form">
+          <div className="field">
+            <label htmlFor="chantingRounds">Morning meditation (chanting rounds)</label>
+            <input id="chantingRounds" name="chantingRounds" type="number" min={0} max={108} step={1} defaultValue={entry ? entry.chanting_rounds ?? "" : 0} required />
+            {state.fieldErrors?.chantingRounds?.[0] ? <p className="field-error" role="alert">Enter a whole number from 0 to 108.</p> : null}
+          </div>
+          <div className="field">
+            <label htmlFor="gitaClassStatus">Gita class attendance</label>
+            <select id="gitaClassStatus" name="gitaClassStatus" defaultValue={entry?.gita_class_status ?? "present"}>
+              <option value="present">Present</option><option value="absent">Absent</option><option value="no_class">No class</option>
+            </select>
+          </div>
+          <label className="checkbox-row"><input name="morningAratiAttended" type="checkbox" defaultChecked={entry?.morning_arati_attended ?? false} /> Attended Morning Arati</label>
+          <div className="field"><label htmlFor="eveningReadingMinutes">Evening book reading (minutes)</label><input id="eveningReadingMinutes" name="eveningReadingMinutes" type="number" min={0} max={360} defaultValue={entry?.evening_reading_minutes ?? 0} required /></div>
+        </div>
+      </fieldset>
+      <fieldset className="routine-section full-span">
+        <legend>📚 Study</legend>
+        <div className="split-form">
+          <div className="field"><label htmlFor="studyHours">Study hours</label><input id="studyHours" name="studyHours" type="number" min={0} max={18} defaultValue={hours} required /></div>
+          <div className="field"><label htmlFor="studyMinutes">Additional minutes</label><input id="studyMinutes" name="studyMinutes" type="number" min={0} max={59} defaultValue={minutes} required /></div>
+          <label className="checkbox-row full-span"><input name="libraryAttended" type="checkbox" defaultChecked={entry?.library_attended ?? false} /> Attended the library</label>
+        </div>
+      </fieldset>
+      <fieldset className="routine-section full-span">
+        <legend>🛏️ Discipline</legend>
+        <div className="split-form">
+          <div className="field"><label htmlFor="sleepTime">Previous night sleep time</label><input id="sleepTime" name="sleepTime" type="time" defaultValue={entry?.sleep_time.slice(0, 5) ?? "22:30"} required /></div>
+          <div className="field"><label htmlFor="wakeTime">Wake-up time</label><input id="wakeTime" name="wakeTime" type="time" defaultValue={entry?.wake_time.slice(0, 5) ?? "06:00"} required /></div>
+        </div>
+      </fieldset>
+      <fieldset className="routine-section full-span">
+        <legend>🤝 Seva &amp; Character</legend>
+        <div className="field"><label htmlFor="sevaMinutes">Seva (minutes)</label><input id="sevaMinutes" name="sevaMinutes" type="number" min={0} max={720} defaultValue={entry?.seva_minutes ?? 0} required /></div>
+        <p className="field-hint">This category is calculated from self-reported seva minutes, not a subjective character assessment.</p>
+      </fieldset>
       <div className="field full-span">
         <label htmlFor="note">Optional note</label>
         <textarea

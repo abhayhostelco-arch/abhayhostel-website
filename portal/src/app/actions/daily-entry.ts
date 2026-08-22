@@ -19,7 +19,12 @@ export async function saveDailyEntryAction(
     wakeTime: formData.get("wakeTime"),
     studyHours: formData.get("studyHours"),
     studyMinutes: formData.get("studyMinutes"),
-    academyStatus: formData.get("academyStatus"),
+    chantingRounds: formData.get("chantingRounds"),
+    gitaClassStatus: formData.get("gitaClassStatus"),
+    morningAratiAttended: formData.get("morningAratiAttended") === "on",
+    eveningReadingMinutes: formData.get("eveningReadingMinutes"),
+    libraryAttended: formData.get("libraryAttended") === "on",
+    sevaMinutes: formData.get("sevaMinutes"),
     note: formData.get("note") ?? "",
   });
   if (!parsed.success) {
@@ -46,7 +51,12 @@ export async function saveDailyEntryAction(
       sleep_time: parsed.data.sleepTime,
       wake_time: parsed.data.wakeTime,
       study_minutes: studyMinutes,
-      academy_status: parsed.data.academyStatus,
+      chanting_rounds: parsed.data.chantingRounds,
+      gita_class_status: parsed.data.gitaClassStatus,
+      morning_arati_attended: parsed.data.morningAratiAttended,
+      evening_reading_minutes: parsed.data.eveningReadingMinutes,
+      library_attended: parsed.data.libraryAttended,
+      seva_minutes: parsed.data.sevaMinutes,
       note: parsed.data.note,
     },
     { onConflict: "student_id,entry_date" },
@@ -54,5 +64,6 @@ export async function saveDailyEntryAction(
   if (error) return { status: "error", message: "The entry could not be saved." };
 
   revalidatePath("/student");
+  revalidatePath("/student/progress");
   return { status: "success", message: "Daily entry saved." };
 }

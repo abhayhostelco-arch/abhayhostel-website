@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
-import { LockKeyhole, ShieldCheck } from "lucide-react";
+import { useActionState, useState } from "react";
+import { Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
 import { loginAction } from "@/app/actions/auth";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 import { initialActionState } from "@/lib/types";
 
 export function LoginForm() {
   const [state, action, pending] = useActionState(loginAction, initialActionState);
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <div className="auth-card">
@@ -28,14 +29,26 @@ export function LoginForm() {
         </div>
         <div className="field">
           <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            maxLength={128}
-            required
-          />
+          <div className="password-input">
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              maxLength={128}
+              required
+            />
+            <button
+              className="password-visibility-button"
+              type="button"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              onClick={() => setShowPassword((visible) => !visible)}
+            >
+              {showPassword ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}
+            </button>
+          </div>
+          <p className="field-hint">Password must contain at least 14 characters.</p>
         </div>
         <TurnstileWidget />
         {state.status === "error" && state.message ? (

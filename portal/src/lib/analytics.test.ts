@@ -7,6 +7,8 @@ import {
   formatMinutes,
   sleepDurationMinutes,
   timeToMinutes,
+  total,
+  totalRecorded,
 } from "@/lib/analytics";
 import type { AlertSettings, DailyEntry, Profile } from "@/lib/types";
 
@@ -46,7 +48,12 @@ function entry(overrides: Partial<DailyEntry> = {}): DailyEntry {
     sleep_time: "23:00:00",
     wake_time: "05:00:00",
     study_minutes: 180,
-    academy_status: "absent",
+    chanting_rounds: 16,
+    gita_class_status: "absent",
+    morning_arati_attended: true,
+    evening_reading_minutes: 30,
+    library_attended: true,
+    seva_minutes: 60,
     note: null,
     created_at: "2026-08-21T00:00:00Z",
     updated_at: "2026-08-21T00:00:00Z",
@@ -69,6 +76,9 @@ describe("sleep and averages", () => {
     expect(formatMinutes(125)).toBe("2h 05m");
     expect(formatClock(null)).toBe("—");
     expect(formatClock(390)).toContain("6:30");
+    expect(total([60, 90, 30])).toBe(180);
+    expect(totalRecorded([16, null, 8])).toBe(24);
+    expect(totalRecorded([null])).toBeNull();
   });
 });
 
@@ -92,7 +102,7 @@ describe("derived alerts", () => {
   it("derives a sleep alert outside configured bounds", () => {
     const alerts = deriveAlerts(
       [student],
-      [entry({ sleep_time: "02:00:00", wake_time: "05:00:00", study_minutes: 300, academy_status: "present" })],
+      [entry({ sleep_time: "02:00:00", wake_time: "05:00:00", study_minutes: 300, gita_class_status: "present" })],
       { ...settings, missed_entry_enabled: false },
       2,
       new Date("2026-08-22T06:30:00Z"),

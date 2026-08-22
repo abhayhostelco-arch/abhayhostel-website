@@ -35,7 +35,10 @@ export function PortalShell({
             ]
           : []),
       ]
-    : [{ href: "/student", label: "Daily tracker", icon: ClipboardCheck }];
+    : [
+        { href: "/student", label: "Daily tracker", icon: ClipboardCheck },
+        { href: "/student/progress", label: "Progress", icon: ChartNoAxesCombined },
+      ];
 
   return (
     <div className="portal-shell">

@@ -60,6 +60,55 @@ a {
   outline-offset: 2px;
 }
 
+.route-loading {
+  position: fixed;
+  z-index: 9999;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 4px;
+  overflow: hidden;
+  background: rgba(195, 138, 32, 0.2);
+}
+
+.route-loading-bar {
+  display: block;
+  width: 45%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold-dark), #e2b449, var(--gold-dark));
+  box-shadow: 0 1px 8px rgba(195, 138, 32, 0.55);
+  animation: route-loading-progress 1.1s ease-in-out infinite;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes route-loading-progress {
+  from {
+    transform: translateX(-110%);
+  }
+
+  to {
+    transform: translateX(330%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-loading-bar {
+    width: 100%;
+    animation: none;
+  }
+}
+
 .auth-shell {
   min-height: 100vh;
   display: grid;
@@ -200,6 +249,54 @@ a {
   background: #fff;
   border: 1px solid rgba(6, 29, 58, 0.24);
   border-radius: 9px;
+}
+
+.field-error {
+  color: var(--danger);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.field-hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.password-input {
+  position: relative;
+}
+
+.password-input input {
+  padding-right: 3rem;
+}
+
+.password-visibility-button {
+  position: absolute;
+  top: 50%;
+  right: 0.65rem;
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.password-visibility-button:hover {
+  color: var(--navy);
+}
+
+.password-visibility-button:focus-visible {
+  color: var(--navy);
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
 }
 
 .field textarea {
@@ -609,6 +706,28 @@ td {
   gap: 1rem;
 }
 
+.routine-section {
+  padding: 1rem;
+  background: var(--cream-light);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.routine-section legend {
+  padding: 0 0.4rem;
+  color: var(--navy);
+  font-family: Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.routine-section .checkbox-row {
+  min-height: 48px;
+  align-self: end;
+  color: var(--navy);
+  font-weight: 750;
+}
+
 .full-span {
   grid-column: 1 / -1;
 }
@@ -645,6 +764,27 @@ td {
   grid-template-columns: 1fr;
 }
 
+.growth-score-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.growth-score-overall {
+  color: #fff;
+  background: var(--navy);
+  border-color: var(--navy);
+}
+
+.growth-score-overall span,
+.growth-score-overall strong {
+  color: #fff;
+}
+
+.current-student-row {
+  background: var(--warning-soft);
+}
+
 .narrow-panel {
   max-width: 780px;
 }
@@ -660,11 +800,20 @@ td {
 }
 
 @media (max-width: 1120px) {
+  .growth-score-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .content-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .growth-score-grid {
     grid-template-columns: 1fr;
   }
 }
