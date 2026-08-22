@@ -1,0 +1,27 @@
+import { NextResponse } from "next/server";
+import { getCurrentProfile } from "@/lib/auth";
+import { sleepDurationMinutes } from "@/lib/analytics";
+import { toCsv } from "@/lib/csv";
+import { daysAgoInIndia } from "@/lib/date";
+import { getEntries, getProfiles } from "@/lib/data";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { reportQuerySchema } from "@/lib/validation";
+
+export async function GET(request: Request) {
+  const profile = await getCurrentProfile();
+  if (!profile) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (profile.role === "student") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const url = new URL(request.url);
+  const parsed = reportQuerySchema.safeParse({ range: url.searchParams.get("range") ?? "30", studentId: url.searchParams.get("studentId") || undefined });
+  if (!parsed.success) return NextResponse.json({ error: "Invalid report request" }, { status: 400 });
+  const range = Number(parsed.data.range);
+  const [entries, students] = await Promise.all([getEntries({ startDate: daysAgoInIndia(range - 1), studentId: parsed.data.studentId }), getProfiles("student")]);
+  const names = new Map(students.map((student) => [student.id, student]));
+  const rows: unknown[][] = [["Student", "Email", "Academy / class", "Date", "Sleep time", "Wake time", "Sleep minutes", "Study minutes", "Academy status", "Note", "Created at", "Updated at"]];
+  for (const entry of entries.slice(0, 5000)) {
+    const student = names.get(entry.student_id);
+    rows.push([student?.full_name, student?.email, student?.academy_label, entry.entry_date, entry.sleep_time.slice(0, 5), entry.wake_time.slice(0, 5), sleepDurationMinutes(entry.sleep_time, entry.wake_time), entry.study_minutes, entry.academy_status, entry.note, entry.created_at, entry.updated_at]);
+  }
+  await createAdminClient().from("audit_events").insert({ actor_id: profile.id, action: "report_exported", target_id: parsed.data.studentId ?? null, metadata: { range_days: String(range), row_count: String(entries.length) } });
+  return new NextResponse(toCsv(rows), { status: 200, headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="abhay-hostel-report-${range}d.csv"`, "Cache-Control": "private, no-store, max-age=0", "X-Content-Type-Options": "nosniff" } });
+}

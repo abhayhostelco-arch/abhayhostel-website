@@ -1,0 +1,39 @@
+name: Portal CI
+
+on:
+  push:
+    paths: ["portal/**", ".github/workflows/portal-ci.yml"]
+  pull_request:
+    paths: ["portal/**", ".github/workflows/portal-ci.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portal-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: portal
+    env:
+      NEXT_PUBLIC_APP_URL: https://app.abhayhostel.in
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci_publishable_key_not_a_real_credential
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
+      SUPABASE_SERVICE_ROLE_KEY: ci_service_role_key_not_a_real_credential
+      REAUTH_SECRET: ci-only-reauth-secret-at-least-32-characters
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: portal/package-lock.json
+      - run: npm ci
+      - run: npm run verify
+      - run: npm run test:coverage
+      - run: npm audit --audit-level=high

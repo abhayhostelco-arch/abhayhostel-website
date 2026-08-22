@@ -1,0 +1,27 @@
+project_id = "abhay-hostel-portal"
+
+[api]
+enabled = true
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 5000
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/change-password"]
+enable_signup = false
+minimum_password_length = 14
+password_requirements = "lower_upper_letters_digits_symbols"
+jwt_expiry = 3600
+
+[auth.email]
+enable_signup = false
+double_confirm_changes = true
+enable_confirmations = true
+max_frequency = "60s"
+
+[auth.captcha]
+enabled = false
+provider = "turnstile"
+secret = "env(SUPABASE_AUTH_CAPTCHA_SECRET)"
