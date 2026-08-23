@@ -19,11 +19,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const parsed = reportQuerySchema.safeParse(raw);
   const range = parsed.success ? Number(parsed.data.range) : 30;
   const studentId = parsed.success ? parsed.data.studentId : undefined;
-  const [students, allEntries, scoreSettings] = await Promise.all([
-    getProfiles("student"), getEntries({ startDate: daysAgoInIndia(range - 1) }), getScoreSettings(),
-  ]);
-  const activeStudents = students.filter((student) => student.is_active);
+  const [activeStudents, scoreSettings] = await Promise.all([getProfiles("student", true), getScoreSettings()]);
   const scopedStudents = studentId ? activeStudents.filter((student) => student.id === studentId) : activeStudents;
+  const allEntries = await getEntries({ startDate: daysAgoInIndia(range - 1), studentIds: activeStudents.map((student) => student.id) });
   const entries = studentId ? allEntries.filter((entry) => entry.student_id === studentId) : allEntries;
   const possible = Math.max(scopedStudents.length * range, 1);
   const completion = Math.min(100, Math.round((entries.length / possible) * 100));

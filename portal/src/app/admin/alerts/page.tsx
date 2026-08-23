@@ -14,9 +14,8 @@ export default async function AlertsPage({ searchParams }: { searchParams: Promi
   const range = params.range === "30" || params.range === "90" ? Number(params.range) : 7;
   const allowedTypes = ["all", "missing", "sleep", "study", "absence"];
   const type = allowedTypes.includes(params.type ?? "") ? params.type! : "all";
-  const [students, entries, settings] = await Promise.all([
-    getProfiles("student"), getEntries({ startDate: daysAgoInIndia(range) }), getAlertSettings(),
-  ]);
+  const students = await getProfiles("student", true);
+  const [entries, settings] = await Promise.all([getEntries({ startDate: daysAgoInIndia(range), studentIds: students.map((student) => student.id) }), getAlertSettings()]);
   const alerts = deriveAlerts(students, entries, settings, range).filter((alert) => type === "all" || alert.type === type);
   return (
     <main className="page-container">

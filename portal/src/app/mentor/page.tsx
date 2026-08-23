@@ -11,8 +11,8 @@ import { buildGrowthReport } from "@/lib/growth-score";
 export default async function MentorDashboard() {
   const mentor = await requireProfile(["admin"]);
   const start = daysAgoInIndia(6); const today = todayInIndia();
-  const [students, entries, alertsSettings, settings, globalSource] = await Promise.all([getProfiles("student"), getEntries({ startDate: start }), getAlertSettings(), getScoreSettings(), getStudentLeaderboardSource(start)]);
-  const active = students.filter((student) => student.is_active);
+  const active = await getProfiles("student", true);
+  const [entries, alertsSettings, settings, globalSource] = await Promise.all([getEntries({ startDate: start, studentIds: active.map((student) => student.id) }), getAlertSettings(), getScoreSettings(), getStudentLeaderboardSource(start)]);
   const todayEntries = entries.filter((entry) => entry.entry_date === today);
   const alerts = deriveAlerts(active, entries, alertsSettings, 7).slice(0, 6);
   const globalReport = buildGrowthReport(globalSource.students, globalSource.entries, settings, 7);

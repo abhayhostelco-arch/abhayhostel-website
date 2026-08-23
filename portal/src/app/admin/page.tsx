@@ -16,13 +16,13 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
   const { mentorId } = await searchParams;
   const start = daysAgoInIndia(6);
   const today = todayInIndia();
-  const [students, mentors, entries, alertsSettings, scoreSettings, source] = await Promise.all([
-    getProfiles("student"), getProfiles("admin"), getEntries({ startDate: start }), getAlertSettings(), getScoreSettings(), getStudentLeaderboardSource(start),
+  const [active, mentors, alertsSettings, scoreSettings, source] = await Promise.all([
+    getProfiles("student", true), getProfiles("admin", true), getAlertSettings(), getScoreSettings(), getStudentLeaderboardSource(start),
   ]);
-  const active = students.filter((student) => student.is_active);
   const report = buildGrowthReport(source.students, source.entries, scoreSettings, 7);
   const allowedMentor = mentors.some((mentor) => mentor.id === mentorId) ? mentorId : undefined;
   const poolIds = new Set(active.filter((student) => !allowedMentor || student.mentor_id === allowedMentor).map((student) => student.id));
+  const entries = await getEntries({ startDate: start, studentIds: [...poolIds] });
   const ranked = report.students.filter((student) => poolIds.has(student.studentId)).slice(0, 10);
   const todayEntries = entries.filter((entry) => entry.entry_date === today && poolIds.has(entry.student_id));
   const scopedStudents = active.filter((student) => poolIds.has(student.id));

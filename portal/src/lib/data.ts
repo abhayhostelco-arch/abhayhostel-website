@@ -16,7 +16,9 @@ export async function getProfiles(role?: "admin" | "student", activeOnly = false
 export async function getEntries(options: {
   startDate: string;
   studentId?: string;
+  studentIds?: string[];
 }): Promise<DailyEntry[]> {
+  if (options.studentIds?.length === 0) return [];
   const supabase = await createClient();
   let query = supabase
     .from("daily_entries")
@@ -25,6 +27,7 @@ export async function getEntries(options: {
     .order("entry_date", { ascending: false })
     .limit(5000);
   if (options.studentId) query = query.eq("student_id", options.studentId);
+  else if (options.studentIds) query = query.in("student_id", options.studentIds);
   const { data, error } = await query;
   if (error) throw new Error("Unable to load daily entries.");
   return (data ?? []) as DailyEntry[];
@@ -60,11 +63,12 @@ export async function getScoreSettings(): Promise<ScoreSettings> {
 
 export async function getStudentLeaderboardSource(startDate: string): Promise<{ students: Profile[]; entries: DailyEntry[] }> {
   const admin = createAdminClient();
-  const [profilesResult, entriesResult] = await Promise.all([
-    admin.from("profiles").select("*").eq("role", "student").eq("is_active", true).order("full_name").limit(500),
-    admin.from("daily_entries").select("*").gte("entry_date", startDate).order("entry_date", { ascending: false }).limit(5000),
-  ]);
-  if (profilesResult.error || entriesResult.error) throw new Error("Unable to load leaderboard data.");
+  const profilesResult = await admin.from("profiles").select("*").eq("role", "student").eq("is_active", true).order("full_name").limit(500);
+  if (profilesResult.error) throw new Error("Unable to load leaderboard data.");
+  const studentIds = (profilesResult.data ?? []).map((profile) => profile.id);
+  if (studentIds.length === 0) return { students: [], entries: [] };
+  const entriesResult = await admin.from("daily_entries").select("*").in("student_id", studentIds).gte("entry_date", startDate).order("entry_date", { ascending: false }).limit(5000);
+  if (entriesResult.error) throw new Error("Unable to load leaderboard data.");
   return { students: (profilesResult.data ?? []) as Profile[], entries: (entriesResult.data ?? []) as DailyEntry[] };
 }
 

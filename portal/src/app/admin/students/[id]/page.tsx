@@ -20,15 +20,17 @@ export default async function StudentDetailPage({ params, searchParams }: { para
   if (!z.uuid().safeParse(id).success) notFound();
   const range = query.range === "7" || query.range === "30" ? Number(query.range) : 90;
   const correctionDate = query.date && isWithinEntryWindow(query.date) ? query.date : todayInIndia();
-  const [students, allEntries, scoreSettings] = await Promise.all([getProfiles("student"), getEntries({ startDate: daysAgoInIndia(range - 1) }), getScoreSettings()]);
+  const [students, scoreSettings] = await Promise.all([getProfiles("student"), getScoreSettings()]);
   const student = students.find((profile) => profile.id === id);
   if (!student) notFound();
-  const entries = allEntries.filter((entry) => entry.student_id === id);
+  const activeStudents = students.filter((profile) => profile.is_active);
+  const activeEntries = await getEntries({ startDate: daysAgoInIndia(range - 1), studentIds: activeStudents.map((profile) => profile.id) });
+  const entries = student.is_active ? activeEntries.filter((entry) => entry.student_id === id) : await getEntries({ startDate: daysAgoInIndia(range - 1), studentId: id });
   const totalStudy = total(entries.map((entry) => entry.study_minutes));
   const totalRounds = totalRecorded(entries.map((entry) => entry.chanting_rounds));
   const chartData = [...entries].reverse().map((entry) => ({ date: entry.entry_date.slice(5), sleepHours: Number((sleepDurationMinutes(entry.sleep_time, entry.wake_time) / 60).toFixed(1)), studyHours: Number((entry.study_minutes / 60).toFixed(1)) }));
   const personalGrowth = buildGrowthReport([{ ...student, is_active: true }], entries, scoreSettings, range).students[0];
-  const activeGrowth = buildGrowthReport(students, allEntries, scoreSettings, range).students.find((report) => report.studentId === id);
+  const activeGrowth = buildGrowthReport(activeStudents, activeEntries, scoreSettings, range).students.find((report) => report.studentId === id);
   const growthChartData = (personalGrowth?.daily ?? []).map((day) => ({ ...day, date: day.date.slice(5) }));
   const correctionEntry = entries.find((entry) => entry.entry_date === correctionDate);
   return (
