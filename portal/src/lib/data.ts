@@ -3,10 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AlertSettings, AttendanceEvent, AttendancePerson, AttendanceRecord, DailyEntry, Profile, ScoreSettings, SharedResource, WeeklyProgram, WeeklyProgramEntry } from "@/lib/types";
 
-export async function getProfiles(role?: "admin" | "student"): Promise<Profile[]> {
+export async function getProfiles(role?: "admin" | "student", activeOnly = false): Promise<Profile[]> {
   const supabase = await createClient();
   let query = supabase.from("profiles").select("*").order("full_name").limit(500);
   if (role) query = query.eq("role", role);
+  if (activeOnly) query = query.eq("is_active", true);
   const { data, error } = await query;
   if (error) throw new Error("Unable to load profiles.");
   return (data ?? []) as Profile[];

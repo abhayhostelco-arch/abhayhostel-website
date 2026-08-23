@@ -10,7 +10,7 @@ import { getProfiles, getWeeklyProgramEntries, getWeeklyPrograms } from "@/lib/d
 export default async function WeeklyProgramPage({ searchParams }: { searchParams: Promise<{ mentorId?: string }> }) {
   const profile = await requireProfile();
   const query = await searchParams;
-  const [programs, allStudents, mentors] = await Promise.all([getWeeklyPrograms(), profile.role === "student" ? Promise.resolve([profile]) : getProfiles("student"), profile.role === "super_admin" ? getProfiles("admin") : Promise.resolve([])]);
+  const [programs, allStudents, mentors] = await Promise.all([getWeeklyPrograms(), profile.role === "student" ? Promise.resolve([profile]) : getProfiles("student", true), profile.role === "super_admin" ? getProfiles("admin", true) : Promise.resolve([])]);
   const entries = await getWeeklyProgramEntries(allStudents.map((student) => student.id));
   const selectedMentor = mentors.some((mentor) => mentor.id === query.mentorId) ? query.mentorId : undefined;
   const students = selectedMentor ? allStudents.filter((student) => student.mentor_id === selectedMentor) : allStudents;
