@@ -1,8 +1,3 @@
 export default function Loading() {
-  return (
-    <div className="route-loading" role="status" aria-live="polite">
-      <span className="route-loading-bar" aria-hidden="true" />
-      <span className="visually-hidden">Loading page…</span>
-    </div>
-  );
+  return <main className="page-container" aria-busy="true" aria-live="polite"><span className="visually-hidden">Loading…</span><div className="skeleton skeleton-heading" /><div className="skeleton-grid"><div className="skeleton skeleton-metric" /><div className="skeleton skeleton-metric" /><div className="skeleton skeleton-metric" /><div className="skeleton skeleton-metric" /></div><div className="skeleton skeleton-panel" /></main>;
 }

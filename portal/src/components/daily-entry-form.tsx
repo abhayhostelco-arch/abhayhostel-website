@@ -42,7 +42,7 @@ export function DailyEntryForm({
         />
       </div>
       <fieldset className="routine-section full-span">
-        <legend>🕉️ Sadhana</legend>
+        <legend>Sadhana</legend>
         <div className="split-form">
           <div className="field">
             <label htmlFor="chantingRounds">Morning meditation (chanting rounds)</label>
@@ -60,7 +60,7 @@ export function DailyEntryForm({
         </div>
       </fieldset>
       <fieldset className="routine-section full-span">
-        <legend>📚 Study</legend>
+        <legend>Study</legend>
         <div className="split-form">
           <div className="field"><label htmlFor="studyHours">Study hours</label><input id="studyHours" name="studyHours" type="number" min={0} max={18} defaultValue={hours} required /></div>
           <div className="field"><label htmlFor="studyMinutes">Additional minutes</label><input id="studyMinutes" name="studyMinutes" type="number" min={0} max={59} defaultValue={minutes} required /></div>
@@ -68,14 +68,14 @@ export function DailyEntryForm({
         </div>
       </fieldset>
       <fieldset className="routine-section full-span">
-        <legend>🛏️ Discipline</legend>
+        <legend>Discipline</legend>
         <div className="split-form">
           <div className="field"><label htmlFor="sleepTime">Previous night sleep time</label><input id="sleepTime" name="sleepTime" type="time" defaultValue={entry?.sleep_time.slice(0, 5) ?? "22:30"} required /></div>
           <div className="field"><label htmlFor="wakeTime">Wake-up time</label><input id="wakeTime" name="wakeTime" type="time" defaultValue={entry?.wake_time.slice(0, 5) ?? "06:00"} required /></div>
         </div>
       </fieldset>
       <fieldset className="routine-section full-span">
-        <legend>🤝 Seva &amp; Character</legend>
+        <legend>Seva &amp; Character</legend>
         <div className="field"><label htmlFor="sevaMinutes">Seva (minutes)</label><input id="sevaMinutes" name="sevaMinutes" type="number" min={0} max={720} defaultValue={entry?.seva_minutes ?? 0} required /></div>
         <p className="field-hint">This category is calculated from self-reported seva minutes, not a subjective character assessment.</p>
       </fieldset>
@@ -86,7 +86,7 @@ export function DailyEntryForm({
           name="note"
           maxLength={500}
           defaultValue={entry?.note ?? ""}
-          placeholder="Anything the administration should know about this day"
+          placeholder="Add anything the administration should know…"
         />
       </div>
       {state.message ? (
@@ -99,10 +99,10 @@ export function DailyEntryForm({
           {state.message}
         </p>
       ) : null}
-      <div className="full-span">
+      <div className="full-span form-submit-bar">
         <button className="button" type="submit" disabled={pending}>
           <Save size={18} aria-hidden="true" />
-          {pending ? "Saving…" : entry ? "Update daily entry" : "Save daily entry"}
+          {pending ? "Saving…" : entry ? "Update Daily Entry" : "Save Daily Entry"}
         </button>
       </div>
     </form>

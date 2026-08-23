@@ -14,16 +14,17 @@ export function sleepDurationMinutes(sleepTime: string, wakeTime: string): numbe
 }
 
 export function average(values: number[]): number | null {
-  if (values.length === 0) return null;
-  return values.reduce((total, value) => total + value, 0) / values.length;
+  const finiteValues = values.filter(Number.isFinite);
+  if (finiteValues.length === 0) return null;
+  return finiteValues.reduce((sum, value) => sum + value, 0) / finiteValues.length;
 }
 
 export function total(values: number[]): number {
-  return values.reduce((sum, value) => sum + value, 0);
+  return values.filter(Number.isFinite).reduce((sum, value) => sum + value, 0);
 }
 
 export function totalRecorded(values: Array<number | null>): number | null {
-  const recorded = values.filter((value): value is number => value !== null);
+  const recorded = values.filter((value): value is number => value !== null && Number.isFinite(value));
   return recorded.length === 0 ? null : total(recorded);
 }
 
@@ -38,14 +39,14 @@ export function averageClock(values: string[], overnight = false): number | null
 }
 
 export function formatMinutes(value: number | null): string {
-  if (value === null) return "—";
+  if (value === null || !Number.isFinite(value)) return "—";
   const hours = Math.floor(value / 60);
   const minutes = Math.round(value % 60);
   return `${hours}h ${String(minutes).padStart(2, "0")}m`;
 }
 
 export function formatClock(value: number | null): string {
-  if (value === null) return "—";
+  if (value === null || !Number.isFinite(value)) return "—";
   const normalized = Math.round(value) % 1440;
   const hours = Math.floor(normalized / 60);
   const minutes = normalized % 60;

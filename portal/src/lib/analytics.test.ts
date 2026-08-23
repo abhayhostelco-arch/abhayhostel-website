@@ -80,6 +80,10 @@ describe("sleep and averages", () => {
     expect(total([60, 90, 30])).toBe(180);
     expect(totalRecorded([16, null, 8])).toBe(24);
     expect(totalRecorded([null])).toBeNull();
+    expect(formatMinutes(Number.NaN)).toBe("—");
+    expect(formatClock(Number.NaN)).toBe("—");
+    expect(totalRecorded([Number.NaN, null])).toBeNull();
+    expect(average([120, Number.NaN, 240])).toBe(180);
   });
 });
 

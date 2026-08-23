@@ -33,7 +33,7 @@ export function ScoreSettingsForm({ settings }: { settings: ScoreSettings }) {
       <div className="field"><label htmlFor="scoreStartDate">Scoring launch date</label><input id="scoreStartDate" name="scoreStartDate" type="date" defaultValue={settings.score_start_date} required /></div>
       <p className="field-hint full-span">Category weights must total 100. Changing these settings recalculates reports from the launch date.</p>
       {state.message ? <p className={`form-message full-span ${state.status === "success" ? "form-success" : "form-error"}`} role="status">{state.message}</p> : null}
-      <div className="full-span"><button className="button" type="submit" disabled={pending}><Save size={18} aria-hidden="true" />{pending ? "Saving…" : "Save Growth Score settings"}</button></div>
+      <div className="full-span form-submit-bar"><button className="button" type="submit" disabled={pending}><Save size={18} aria-hidden="true" />{pending ? "Saving…" : "Save Growth Score Settings"}</button></div>
     </form>
   );
 }

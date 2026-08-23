@@ -34,8 +34,8 @@ export default async function StudentDashboard() {
 
   return <main className="page-container">
     <header className="page-heading hero-heading">
-      <div><p className="eyebrow">Hare Krishna 🙏</p><h1>Welcome, {profile.full_name.split(" ")[0]}</h1><p>Your rolling seven-day Growth Score and daily Sadhana at a glance.</p></div>
-      <Link className="button" href={`/student/entry?date=${today}`}>{todayEntry ? "Edit today’s entry" : "Fill today’s entry"}</Link>
+      <div><p className="eyebrow">Student Dashboard</p><h1>Hare Krishna, {profile.full_name.split(" ")[0]}</h1><p>Your 7-day Growth Score and today’s Sadhana at a glance.</p></div>
+      <Link className="button" href={`/student/entry?date=${today}`}>{todayEntry ? "Edit Today’s Entry" : "Fill Today’s Entry"}</Link>
     </header>
     <section aria-labelledby="weekly-score-title"><div className="panel-title"><h2 id="weekly-score-title">Last 7 days</h2><span>{mine?.submittedDays ?? 0}/{mine?.eligibleDays ?? 0} entries submitted</span></div><GrowthScoreCards scores={mine ?? report.averages} /></section>
     <section className="dashboard-grid section-gap">

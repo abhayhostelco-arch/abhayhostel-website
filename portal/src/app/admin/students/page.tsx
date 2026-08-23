@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AccountForm } from "@/components/account-form";
 import { AccountResetForm } from "@/components/account-reset-form";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { assignStudentMentorAction, setAccountActiveAction } from "@/app/actions/accounts";
 import { requireProfile } from "@/lib/auth";
 import { displayDate } from "@/lib/date";
@@ -27,8 +27,8 @@ export default async function StudentsPage({
 
   return (
     <main className="page-container">
-      <header className="page-heading"><div><p className="eyebrow">{actor.role === "super_admin" ? "Accounts & assignments" : "Mentor workspace"}</p><h1>{actor.role === "super_admin" ? "Students" : "My students"}</h1><p>{actor.role === "super_admin" ? "Create students, assign Mentors, and manage access." : "Review, correct, and support your assigned students."}</p></div></header>
-      <section className="content-grid">
+      <header className="page-heading"><div><p className="eyebrow">{actor.role === "super_admin" ? "People" : "Mentor workspace"}</p><h1>{actor.role === "super_admin" ? "Students" : "My Students"}</h1><p>{actor.role === "super_admin" ? "Manage student access, Mentor assignments, and hostel records." : "Review, correct, and support your assigned students."}</p></div>{actor.role === "super_admin" ? <Link className="button" href="/admin/students/new">Add Student</Link> : null}</header>
+      <section>
         <article className="panel">
           <div className="panel-title"><h2>Student directory</h2></div>
           <form className="filters" method="get">
@@ -53,7 +53,7 @@ export default async function StudentsPage({
                         <form action={setAccountActiveAction}>
                           <input type="hidden" name="targetId" value={student.id} />
                           <input type="hidden" name="active" value={student.is_active ? "false" : "true"} />
-                          <button className={`button button-small ${student.is_active ? "button-danger" : "button-secondary"}`} type="submit">{student.is_active ? "Deactivate" : "Reactivate"}</button>
+                          {student.is_active ? <ConfirmSubmitButton message={`Deactivate ${student.full_name}? They will no longer be able to sign in.`}>Deactivate</ConfirmSubmitButton> : <button className="button button-small button-secondary" type="submit">Reactivate</button>}
                         </form>
                         <AccountResetForm targetId={student.id} />
                       </div>
@@ -65,12 +65,6 @@ export default async function StudentsPage({
             {students.length === 0 ? <p className="empty-state">No students match these filters.</p> : null}
           </div>
         </article>
-        <div className="stack">
-          {actor.role === "super_admin" ? <aside className="panel">
-            <div className="panel-title"><h2>Create student</h2></div>
-            <AccountForm role="student" mentors={mentors} />
-          </aside> : null}
-        </div>
       </section>
     </main>
   );

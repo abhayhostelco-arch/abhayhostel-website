@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { AccountForm } from "@/components/account-form";
+import Link from "next/link";
 import { AccountResetForm } from "@/components/account-reset-form";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { RoleBadge } from "@/components/role-badge";
 import { setAccountActiveAction } from "@/app/actions/accounts";
 import { requireProfile } from "@/lib/auth";
@@ -13,8 +14,8 @@ export default async function AdministratorsPage() {
   const administrators = (await getProfiles("admin"));
   return (
     <main className="page-container">
-      <header className="page-heading"><div><p className="eyebrow">Mentor accounts</p><h1>Mentors</h1><p>Create Mentor access and manage the people responsible for student groups.</p></div></header>
-      <section className="content-grid">
+      <header className="page-heading"><div><p className="eyebrow">People</p><h1>Mentors</h1><p>Manage the people responsible for student groups and daily guidance.</p></div><Link className="button" href="/admin/administrators/new">Add Mentor</Link></header>
+      <section>
         <article className="panel">
           <div className="panel-title"><h2>Mentor directory</h2></div>
           <div className="table-wrap">
@@ -32,7 +33,7 @@ export default async function AdministratorsPage() {
                           <form action={setAccountActiveAction}>
                             <input type="hidden" name="targetId" value={administrator.id} />
                             <input type="hidden" name="active" value={administrator.is_active ? "false" : "true"} />
-                            <button className="button button-danger button-small" type="submit">{administrator.is_active ? "Deactivate" : "Reactivate"}</button>
+                            {administrator.is_active ? <ConfirmSubmitButton message={`Deactivate ${administrator.full_name}? Assigned Students will remain linked until reassigned.`}>Deactivate</ConfirmSubmitButton> : <button className="button button-secondary button-small" type="submit">Reactivate</button>}
                           </form>
                           <AccountResetForm targetId={administrator.id} />
                         </div>
@@ -44,9 +45,6 @@ export default async function AdministratorsPage() {
             </table>
           </div>
         </article>
-        <div className="stack">
-          <aside className="panel"><div className="panel-title"><h2>Create Mentor</h2></div><AccountForm role="admin" /></aside>
-        </div>
       </section>
     </main>
   );

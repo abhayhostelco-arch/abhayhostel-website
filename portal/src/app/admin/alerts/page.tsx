@@ -20,7 +20,7 @@ export default async function AlertsPage({ searchParams }: { searchParams: Promi
   const alerts = deriveAlerts(students, entries, settings, range).filter((alert) => type === "all" || alert.type === type);
   return (
     <main className="page-container">
-      <header className="page-heading"><div><p className="eyebrow">Observation</p><h1>Routine alerts</h1><p>Calculated from the current global rules and submitted records.</p></div></header>
+      <header className="page-heading"><div><p className="eyebrow">Insights / Observation</p><h1>Routine Alerts</h1><p>Calculated from the current global rules and submitted records.</p></div><span className={`status-pill ${alerts.length ? "status-warning" : "status-success"}`}>{alerts.length} {alerts.length === 1 ? "alert" : "alerts"}</span></header>
       <section className="panel">
         <form className="filters" method="get">
           <div className="field"><label htmlFor="range">Range</label><select id="range" name="range" defaultValue={String(range)}><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option></select></div>
@@ -34,7 +34,7 @@ export default async function AlertsPage({ searchParams }: { searchParams: Promi
               <div><strong><Link href={`${actor.role === "admin" ? "/mentor" : "/admin"}/students/${alert.studentId}`}>{alert.studentName}</Link></strong><span>{displayDate(alert.date)} · {alert.type} · {alert.message}</span></div>
             </article>
           ))}
-          {alerts.length === 0 ? <p className="empty-state">No alerts match these filters.</p> : null}
+          {alerts.length === 0 ? <div className="empty-state"><BellRing size={28} aria-hidden="true" /><strong>No Alerts Found</strong><p>No routine alerts match the selected filters.</p></div> : null}
         </div>
       </section>
     </main>

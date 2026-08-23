@@ -17,7 +17,7 @@ export function LoginForm() {
 
   return (
     <div className="auth-card">
-      <h2>Welcome back</h2>
+      <h2>Welcome Back</h2>
       <p>Sign in with the credentials issued by the hostel administration.</p>
       <form action={action} className="form-stack">
         <div className="field">
@@ -28,6 +28,7 @@ export function LoginForm() {
             type="email"
             autoComplete="username"
             maxLength={254}
+            spellCheck={false}
             required
           />
         </div>
@@ -52,7 +53,6 @@ export function LoginForm() {
               {showPassword ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}
             </button>
           </div>
-          <p className="field-hint">Password must contain at least 14 characters.</p>
         </div>
         <TurnstileWidget
           onReadyChange={handleCaptchaReady}
@@ -65,7 +65,7 @@ export function LoginForm() {
         ) : null}
         <button className="button" type="submit" disabled={pending || !captchaReady}>
           <LockKeyhole size={18} aria-hidden="true" />
-          {pending ? "Signing in…" : "Sign in securely"}
+          {pending ? "Signing in…" : "Sign In"}
         </button>
       </form>
       <div className="auth-links">

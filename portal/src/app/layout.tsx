@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Suspense, type ReactNode } from "react";
 import { Inter } from "next/font/google";
 import { NavigationProgress } from "@/components/navigation-progress";
@@ -19,6 +19,8 @@ export const metadata: Metadata = {
     "Secure student routine tracking and hostel administration for Abhay Hostel.",
   robots: { index: false, follow: false, nocache: true },
 };
+
+export const viewport: Viewport = { themeColor: "#0b2540" };
 
 export default function RootLayout({
   children,

@@ -22,7 +22,7 @@ export function AlertSettingsForm({ settings }: { settings: AlertSettings }) {
       <label className="checkbox-row full-span"><input name="absenceAlertEnabled" type="checkbox" defaultChecked={settings.absence_alert_enabled} /> Alert on Gita class absence</label>
       {state.message ? <p className={`form-message full-span ${state.status === "success" ? "form-success" : "form-error"}`}>{state.message}</p> : null}
       {state.fieldErrors?.minSleepMinutes?.map((message) => <p key={message} className="form-message form-error full-span">{message}</p>)}
-      <div className="full-span"><button className="button" type="submit" disabled={pending}><Save size={18} /> {pending ? "Saving…" : "Save alert settings"}</button></div>
+      <div className="full-span form-submit-bar"><button className="button" type="submit" disabled={pending}><Save size={18} aria-hidden="true" /> {pending ? "Saving…" : "Save Alert Settings"}</button></div>
     </form>
   );
 }
