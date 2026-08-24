@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
-import { Save } from "lucide-react";
+import { useActionState, useEffect, useRef } from "react";
+import { CheckCircle2, Save } from "lucide-react";
 import { saveDailyEntryAction } from "@/app/actions/daily-entry";
 import type { DailyEntry } from "@/lib/types";
 import { initialActionState } from "@/lib/types";
+import { displayDate } from "@/lib/date";
 
 export function DailyEntryForm({
   selectedDate,
@@ -23,11 +24,19 @@ export function DailyEntryForm({
     saveDailyEntryAction,
     initialActionState,
   );
+  const successDialogRef = useRef<HTMLDialogElement>(null);
   const hours = entry ? Math.floor(entry.study_minutes / 60) : 0;
   const minutes = entry ? entry.study_minutes % 60 : 0;
 
+  useEffect(() => {
+    if (state.status === "success" && !successDialogRef.current?.open) {
+      successDialogRef.current?.showModal();
+    }
+  }, [state]);
+
   return (
-    <form action={action} className="split-form">
+    <>
+      <form action={action} className="split-form">
       {studentId ? <input type="hidden" name="studentId" value={studentId} /> : null}
       <div className="field">
         <label htmlFor="entryDate">Wake-up date</label>
@@ -64,7 +73,7 @@ export function DailyEntryForm({
         <div className="split-form">
           <div className="field"><label htmlFor="studyHours">Study hours</label><input id="studyHours" name="studyHours" type="number" min={0} max={18} defaultValue={hours} required /></div>
           <div className="field"><label htmlFor="studyMinutes">Additional minutes</label><input id="studyMinutes" name="studyMinutes" type="number" min={0} max={59} defaultValue={minutes} required /></div>
-          <label className="checkbox-row full-span"><input name="libraryAttended" type="checkbox" defaultChecked={entry?.library_attended ?? false} /> Attended the library</label>
+          <label className="checkbox-row full-span"><input name="libraryAttended" type="checkbox" defaultChecked={entry?.library_attended ?? false} /> Attended Class</label>
         </div>
       </fieldset>
       <fieldset className="routine-section full-span">
@@ -89,12 +98,10 @@ export function DailyEntryForm({
           placeholder="Add anything the administration should know…"
         />
       </div>
-      {state.message ? (
+      {state.message && state.status !== "success" ? (
         <p
-          className={`form-message full-span ${
-            state.status === "success" ? "form-success" : "form-error"
-          }`}
-          role="status"
+          className="form-message form-error full-span"
+          role="alert"
         >
           {state.message}
         </p>
@@ -105,6 +112,29 @@ export function DailyEntryForm({
           {pending ? "Saving…" : entry ? "Update Daily Entry" : "Save Daily Entry"}
         </button>
       </div>
-    </form>
+      </form>
+      <dialog
+        ref={successDialogRef}
+        className="save-success-dialog"
+        aria-labelledby="save-success-title"
+        aria-describedby="save-success-description"
+      >
+        <div className="save-success-icon" aria-hidden="true">
+          <CheckCircle2 size={34} strokeWidth={1.8} />
+        </div>
+        <p className="eyebrow">Entry complete</p>
+        <h2 id="save-success-title">Daily entry saved</h2>
+        <p id="save-success-description">
+          Your routine for {displayDate(selectedDate)} has been recorded successfully.
+        </p>
+        <button
+          className="button save-success-action"
+          type="button"
+          onClick={() => successDialogRef.current?.close()}
+        >
+          Done
+        </button>
+      </dialog>
+    </>
   );
 }

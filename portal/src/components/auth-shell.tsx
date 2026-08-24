@@ -15,7 +15,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
             to record routines, review progress, and build consistent habits.
           </p>
         </div>
-        <p className="auth-footer">Abhay Hostel · Vrindavan</p>
+        <p className="auth-footer">Abhay Hostel · Dhanbad</p>
       </section>
       <section className="auth-panel">{children}</section>
     </main>

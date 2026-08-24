@@ -9,7 +9,7 @@ export function buildReportRows(entries: DailyEntry[], students: Profile[], sett
   const rows: unknown[][] = [[
     "Student", "Email", "Academy / class", "Date", "Submission status", "Sleep time", "Wake time",
     "Sleep minutes", "Study minutes", "Chanting rounds", "Morning Arati", "Gita class status",
-    "Evening reading minutes", "Library attended", "Seva minutes", "Sadhana score", "Study score",
+    "Evening reading minutes", "Class attended", "Seva minutes", "Sadhana score", "Study score",
     "Discipline score", "Seva & Character score", "Overall Growth Score", "Note", "Created at", "Updated at",
   ]];
 

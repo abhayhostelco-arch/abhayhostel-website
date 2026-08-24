@@ -1168,8 +1168,9 @@ button { color: inherit; }
 .account-menu-copy { min-width: 0; display: grid; line-height: 1.2; }
 .account-menu-copy strong { max-width: 180px; overflow: hidden; font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
 .account-menu-copy small { color: var(--muted); font-size: .65rem; }
-.account-menu-popover { position: absolute; top: calc(100% + .6rem); right: 0; width: 220px; padding: .75rem; background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+.account-menu-popover { position: absolute; top: calc(100% + .6rem); right: 0; width: 260px; padding: .75rem; background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
 .account-menu-popover > div { display: grid; gap: .45rem; padding: .2rem .25rem .75rem; border-bottom: 1px solid var(--line); }
+.account-menu-email { color: var(--muted); font-size: .75rem; line-height: 1.35; overflow-wrap: anywhere; }
 .account-menu-popover button { width: 100%; display: flex; align-items: center; gap: .5rem; margin-top: .55rem; padding: .55rem; color: var(--danger); background: transparent; border: 0; border-radius: 6px; cursor: pointer; }
 .account-menu-popover button:hover { background: var(--danger-soft); }
 .mobile-nav, .mobile-sheet-backdrop { display: none; }
@@ -1240,6 +1241,15 @@ td small { color: var(--muted); overflow-wrap: anywhere; }
 .routine-section { background: #fafbfc; border-radius: 7px; }
 .routine-section legend { font-size: .78rem; letter-spacing: .04em; text-transform: uppercase; }
 .form-submit-bar { position: sticky; z-index: 5; bottom: .75rem; display: flex; justify-content: flex-end; padding: .65rem; background: rgba(255,255,255,.94); border: 1px solid var(--line); border-radius: 7px; box-shadow: 0 8px 24px rgba(10,34,57,.1); backdrop-filter: blur(10px); }
+.save-success-dialog { position: fixed; inset: 0; width: min(calc(100% - 2rem), 410px); max-height: calc(100dvh - 2rem); margin: auto; padding: 2rem; overflow-y: auto; overscroll-behavior: contain; color: #172b3f; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 28px 70px rgba(10,34,57,.24); text-align: center; }
+.save-success-dialog::backdrop { background: rgba(6,24,40,.58); backdrop-filter: blur(3px); }
+.save-success-dialog[open] { animation: save-confirmation-in .2s ease-out; }
+.save-success-icon { width: 64px; height: 64px; display: grid; place-items: center; margin: 0 auto 1rem; color: #fff; background: var(--success); border-radius: 50%; box-shadow: 0 0 0 8px var(--success-soft); }
+.save-success-dialog .eyebrow { margin-bottom: .4rem; color: var(--gold-dark); font-size: .64rem; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+.save-success-dialog h2 { color: var(--navy-deep); font-size: 1.4rem; letter-spacing: -.025em; }
+.save-success-dialog p:not(.eyebrow) { max-width: 34ch; margin: .65rem auto 1.35rem; color: var(--muted); font-size: .84rem; line-height: 1.55; }
+.save-success-action { width: 100%; justify-content: center; }
+@keyframes save-confirmation-in { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .choice-field { background: #fafbfc; border-radius: 7px; }
 .choice-field label { min-height: 40px; background: #fff; border: 1px solid var(--line); }
 .attendance-row { background: #f8fafb; border: 1px solid var(--line); border-radius: 6px; }
@@ -1333,9 +1343,12 @@ td small { color: var(--muted); overflow-wrap: anywhere; }
   .mobile-sheet-links { grid-template-columns: 1fr; }
   .week-strip { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .auth-card { padding: 1.25rem; }
+  .save-success-dialog { width: calc(100% - 1.25rem); max-height: calc(100dvh - 1.25rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)); padding: 1.5rem 1.25rem; }
+  .save-success-icon { width: 56px; height: 56px; margin-bottom: .85rem; }
+  .save-success-dialog h2 { font-size: 1.25rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .skeleton { animation: none; }
+  .skeleton, .save-success-dialog[open] { animation: none; }
 }

@@ -49,7 +49,7 @@ export function PortalShell({ profile, children }: { profile: Profile; children:
       <header className="portal-topbar">
         <div className="mobile-brand"><Brand /></div>
         <div className="topbar-context"><span>Abhay Hostel</span><strong>Operations Portal</strong></div>
-        <details className="account-menu"><summary><span className="avatar" aria-hidden="true">{profile.full_name.slice(0, 1).toUpperCase()}</span><span className="account-menu-copy"><strong>{profile.full_name}</strong><small>Account</small></span></summary><div className="account-menu-popover"><div><strong>{profile.full_name}</strong><RoleBadge role={profile.role} /></div><form action={logoutAction}><button type="submit"><LogOut size={16} aria-hidden="true" /> Sign Out</button></form></div></details>
+        <details className="account-menu"><summary><span className="avatar" aria-hidden="true">{profile.full_name.slice(0, 1).toUpperCase()}</span><span className="account-menu-copy"><strong>{profile.full_name}</strong><small>Account</small></span></summary><div className="account-menu-popover"><div><strong>{profile.full_name}</strong><span className="account-menu-email">{profile.email}</span><RoleBadge role={profile.role} /></div><form action={logoutAction}><button type="submit"><LogOut size={16} aria-hidden="true" /> Sign Out</button></form></div></details>
       </header>
       <div id="main-content" tabIndex={-1}>{children}</div>
       <MobilePortalNavigation links={links} profile={profile} />

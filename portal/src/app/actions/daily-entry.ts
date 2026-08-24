@@ -65,7 +65,15 @@ export async function saveDailyEntryAction(
     },
     { onConflict: "student_id,entry_date" },
   );
-  if (error) return { status: "error", message: "The entry could not be saved." };
+  if (error) {
+    console.error("Daily entry upsert failed", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+    return { status: "error", message: "The entry could not be saved." };
+  }
 
   if (profile.role !== "student") {
     await createAdminClient().from("audit_events").insert({ actor_id: profile.id, action: "entry_corrected", target_id: targetStudentId, metadata: { date: parsed.data.entryDate } });
