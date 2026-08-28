@@ -1,1 +1,5 @@
-export { default, metadata } from "@/app/admin/alerts/page";
+import { redirect } from "next/navigation";
+
+export default function MentorAlertsPage() {
+  redirect("/mentor");
+}

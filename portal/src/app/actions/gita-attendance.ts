@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { requireProfile } from "@/lib/auth";
 import { daysAgoInIndia, todayInIndia } from "@/lib/date";
 import { getProfiles } from "@/lib/data";
-import { validateCompleteAttendanceSheet } from "@/lib/gita-attendance";
 import { isMissingSchemaError } from "@/lib/schema-compat";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -26,10 +25,9 @@ export async function saveGitaAttendanceAction(
     const status = gitaAttendanceStatusSchema.safeParse(formData.get(`status:${student.id}`));
     return status.success ? [{ studentId: student.id, status: status.data }] : [];
   });
-  const complete = validateCompleteAttendanceSheet(eligible.map((student) => student.id), rows);
-  if (!complete.valid) return { status: "error", message: complete.message };
+  if (rows.length === 0) return { status: "error", message: "Select a status for at least one student." };
 
-  const payload = complete.rows.map((row) => ({
+  const payload = rows.map((row) => ({
     student_id: row.studentId,
     attendance_date: date.data,
     status: row.status,

@@ -1,29 +1,38 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BellRing, BookOpen, CalendarCheck2, CheckCircle2, ClipboardCheck, ShieldCheck, Sparkles, UserRoundX, Users } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarCheck2, CheckCircle2, ClipboardCheck, ShieldCheck, Sparkles, UserRoundX, Users } from "lucide-react";
+import { AdminDashboardFilters } from "@/components/admin-dashboard-filters";
 import { CategoryLeaderboard } from "@/components/category-leaderboard";
 import { ActivityList, AttendanceHeatmap, DashboardMetric, DashboardPanel, ScoreOverview, StudentSummaryStrip, type ActivityItem } from "@/components/dashboard-ui";
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { TrendChart } from "@/components/trend-chart";
-import { average, deriveAlerts, formatMinutes } from "@/lib/analytics";
+import { average, formatMinutes } from "@/lib/analytics";
 import { requireProfile } from "@/lib/auth";
 import { daysAgoInIndia, displayDate, todayInIndia } from "@/lib/date";
-import { getAlertSettings, getAvatarSignedUrl, getEntries, getGitaAttendance, getProfiles, getScoreSettings, getStudentLeaderboardSource } from "@/lib/data";
+import { getAvatarSignedUrl, getEntries, getGitaAttendance, getProfiles, getScoreSettings, getStudentLeaderboardSource } from "@/lib/data";
 import { buildGrowthReport } from "@/lib/growth-score";
 import { summarizeAttendanceDays } from "@/lib/gita-attendance";
 
 export const metadata: Metadata = { title: "Admin dashboard" };
 
-export default async function AdminDashboard({ searchParams }: { searchParams: Promise<{ mentorId?: string; range?: string; date?: string }> }) {
+export default async function AdminDashboard({ searchParams }: { searchParams: Promise<{ mentorId?: string; range?: string; startDate?: string; endDate?: string }> }) {
   await requireProfile(["super_admin"]);
-  const { mentorId, range: requestedRange, date: requestedDate } = await searchParams;
-  const range = requestedRange === "7" || requestedRange === "90" ? Number(requestedRange) : 30;
+  const { mentorId, range: requestedRange, startDate: requestedStartDate, endDate: requestedEndDate } = await searchParams;
+  const rangeSelection = requestedRange === "7" || requestedRange === "90" || requestedRange === "custom" ? requestedRange : "30";
   const today = todayInIndia();
-  const endDate = requestedDate && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && requestedDate <= today ? requestedDate : today;
+  const validDate = (value?: string) => Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
+  const requestedCustomEnd = rangeSelection === "custom" && validDate(requestedEndDate) && requestedEndDate! <= today ? requestedEndDate! : today;
+  const customEndNow = new Date(`${requestedCustomEnd}T12:00:00+05:30`);
+  const earliestCustomDate = daysAgoInIndia(89, customEndNow);
+  const customStartDate = rangeSelection === "custom" && validDate(requestedStartDate) && requestedStartDate! >= earliestCustomDate && requestedStartDate! <= requestedCustomEnd ? requestedStartDate! : daysAgoInIndia(29, customEndNow);
+  const range = rangeSelection === "custom" ? Math.round((customEndNow.getTime() - new Date(`${customStartDate}T12:00:00+05:30`).getTime()) / 86_400_000) + 1 : Number(rangeSelection);
+  const endDate = rangeSelection === "custom" ? requestedCustomEnd : today;
   const selectedNow = new Date(`${endDate}T12:00:00+05:30`);
-  const start = daysAgoInIndia(range - 1, selectedNow);
-  const [active, mentors, alertsSettings, scoreSettings, source] = await Promise.all([
-    getProfiles("student", true), getProfiles("admin", true), getAlertSettings(), getScoreSettings(), getStudentLeaderboardSource(start),
+  const start = rangeSelection === "custom" ? customStartDate : daysAgoInIndia(range - 1, selectedNow);
+  const rangeLabel = rangeSelection === "custom" ? `${displayDate(start)} – ${displayDate(endDate)}` : `Last ${range} Days`;
+  const reportRange = range <= 7 ? 7 : range <= 30 ? 30 : 90;
+  const [active, mentors, scoreSettings, source] = await Promise.all([
+    getProfiles("student", true), getProfiles("admin", true), getScoreSettings(), getStudentLeaderboardSource(start),
   ]);
   const sourceEntries = source.entries.filter((entry) => entry.entry_date <= endDate);
   const report = buildGrowthReport(source.students, sourceEntries, scoreSettings, range, selectedNow);
@@ -34,7 +43,6 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
   const scopedReport = report.students.filter((student) => poolIds.has(student.studentId));
   const todayEntries = entries.filter((entry) => entry.entry_date === endDate && poolIds.has(entry.student_id));
   const scopedStudents = active.filter((student) => poolIds.has(student.id));
-  const alerts = deriveAlerts(scopedStudents, entries, alertsSettings, range, selectedNow).slice(0, 6);
   const attendance = await getGitaAttendance(start, [...poolIds]);
   const dates = Array.from({ length: range }, (_, index) => daysAgoInIndia(range - 1 - index, selectedNow));
   const attendanceDays = summarizeAttendanceDays(dates, [...poolIds], attendance.records);
@@ -56,11 +64,10 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
       icon: ClipboardCheck,
       tone: "blue" as const,
     })),
-    ...alerts.slice(0, 3).map((alert) => ({ id: `alert-${alert.id}`, title: "Routine Alert", description: `${alert.studentName} · ${alert.message}`, meta: displayDate(alert.date), icon: BellRing, tone: "rose" as const })),
   ].slice(0, 5);
   const highlightedStudent = scopedReport[0];
   return <main className="page-container">
-    <header className="page-heading dashboard-heading"><div><p className="eyebrow">Overview · {displayDate(endDate)}</p><h1>Hare Krishna 🙏</h1><p>Monitor attendance, student routines, and overall growth for the selected period.</p></div><div className="heading-actions"><form className="dashboard-header-filter" method="get"><label className="visually-hidden" htmlFor="dashboard-range">Report Range</label><select id="dashboard-range" name="range" defaultValue={String(range)}><option value="7">Last 7 Days</option><option value="30">Last 30 Days</option><option value="90">Last 90 Days</option></select><label className="visually-hidden" htmlFor="dashboard-date">End Date</label><input id="dashboard-date" name="date" type="date" max={today} defaultValue={endDate} /><label className="visually-hidden" htmlFor="mentorId">Filter by Mentor</label><select id="mentorId" name="mentorId" defaultValue={allowedMentor ?? ""}><option value="">All Students</option>{mentors.map((mentor) => <option key={mentor.id} value={mentor.id}>{mentor.full_name}</option>)}</select><button className="button button-secondary button-small">Apply</button></form><Link className="button button-secondary" href={`/admin/reports?range=${range}`}>{range}-Day Reports</Link><Link className="button" href="/admin/students/new">Add Student</Link></div></header>
+    <header className="page-heading dashboard-heading"><div><p className="eyebrow">Overview · {rangeLabel}</p><h1>Hare Krishna 🙏</h1><p>Monitor attendance, student routines, and overall growth for the selected period.</p></div><div className="heading-actions"><AdminDashboardFilters initialRange={rangeSelection} initialStartDate={start} initialEndDate={endDate} earliestDate={daysAgoInIndia(89)} today={today} initialMentorId={allowedMentor} mentors={mentors.map((mentor) => ({ id: mentor.id, fullName: mentor.full_name }))} /></div></header>
     <section className="dashboard-kpi-grid" aria-label="Today’s summary">
       <DashboardMetric label="Active Students" value={active.length} detail="Hostel Roster" icon={Users} tone="purple" />
       <DashboardMetric label="Active Mentors" value={mentors.filter((item) => item.is_active).length} detail="Guidance Team" icon={ShieldCheck} tone="green" />
@@ -71,16 +78,15 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
     </section>
     <section className="dashboard-reference-grid section-gap">
       <DashboardPanel title="Student Overview" description={`Top rolling ${range}-day performance`} action={<Link href="/admin/students">View All</Link>} className="student-overview-panel">
-        {highlightedStudent ? <div className="featured-student"><div className="featured-student-avatar"><Sparkles size={22} aria-hidden="true" /></div><div><span className="status-pill status-success">Active</span><h3>{highlightedStudent.studentName}</h3><p>Rank #{highlightedStudent.rank} · {highlightedStudent.submittedDays}/{highlightedStudent.eligibleDays} Entries</p></div><strong>{Math.round(highlightedStudent.overall)}<small>/100</small></strong></div> : <div className="empty-state compact-empty"><strong>No Students Yet</strong><p>Add an active Student to begin tracking growth.</p></div>}
-        {highlightedStudent ? <div className="student-mini-stats"><span><b>{Math.round(highlightedStudent.sadhana)}</b>Sadhana</span><span><b>{Math.round(highlightedStudent.study)}</b>Study</span><span><b>{Math.round(highlightedStudent.discipline)}</b>Discipline</span><span><b>{Math.round(highlightedStudent.seva)}</b>Seva</span></div> : null}
+        {highlightedStudent ? <Link className="student-overview-link" href={`/admin/students/${highlightedStudent.studentId}`} aria-label={`View ${highlightedStudent.studentName}'s profile`}><div className="featured-student"><div className="featured-student-avatar"><Sparkles size={22} aria-hidden="true" /></div><div><span className="status-pill status-success">Active</span><h3>{highlightedStudent.studentName}</h3><p>Rank #{highlightedStudent.rank} · {highlightedStudent.submittedDays}/{highlightedStudent.eligibleDays} Entries</p></div><strong>{Math.round(highlightedStudent.overall)}<small>/100</small></strong></div><div className="student-mini-stats"><span><b>{Math.round(highlightedStudent.sadhana)}</b>Sadhana</span><span><b>{Math.round(highlightedStudent.study)}</b>Study</span><span><b>{Math.round(highlightedStudent.discipline)}</b>Discipline</span><span><b>{Math.round(highlightedStudent.seva)}</b>Seva</span></div></Link> : <div className="empty-state compact-empty"><strong>No Students Yet</strong><p>Add an active Student to begin tracking growth.</p></div>}
       </DashboardPanel>
       <DashboardPanel title="Overall Progress" description={`Rolling ${range}-day group average`} className="score-panel"><ScoreOverview scores={report.averages} /></DashboardPanel>
       <DashboardPanel title="Gita Attendance" description="Recent official attendance"><AttendanceHeatmap days={heatmapDays} /></DashboardPanel>
       <DashboardPanel title="Students Present" description={`${range}-day range ending ${displayDate(endDate)}; unrecorded dates remain gaps`} action={<Link href={`/admin/gita-attendance?date=${endDate}`}>Record Attendance</Link>} className="dashboard-wide-panel">{attendance.available ? <TrendChart data={chartData} mode="attendance" /> : <div className="empty-state unavailable-state"><strong>Attendance Analytics Unavailable</strong><p>Apply the supplied migration to enable the official register.</p></div>}</DashboardPanel>
-      <DashboardPanel title="Recent Activities" description="Today’s submissions and alerts" action={<Link href="/admin/alerts">View Alerts</Link>}><ActivityList items={activityItems} /></DashboardPanel>
-      <DashboardPanel title="Mentor Workload" description="Select a Mentor to view assigned Students" action={<Link href="/admin/administrators">Manage Mentors</Link>} className="dashboard-full-panel workload-panel"><div className="workload-list">{mentors.map((mentor) => { const count = active.filter((student) => student.mentor_id === mentor.id).length; return <Link href={`/admin/students?mentorId=${mentor.id}`} key={mentor.id}><ProfileAvatar name={mentor.full_name} src={mentorAvatars.get(mentor.id)} size={38} /><span title={mentor.full_name}>{mentor.full_name}</span><strong>{count} {count === 1 ? "Student" : "Students"}</strong><ArrowRight size={18} aria-hidden="true" /></Link>; })}{!mentors.length ? <div className="empty-state compact-empty"><strong>No Mentors Yet</strong><p>Create a Mentor before assigning Students.</p></div> : null}</div></DashboardPanel>
+      <DashboardPanel title="Recent Activities" description="Today’s submitted Daily Entries"><ActivityList items={activityItems} /></DashboardPanel>
+      <DashboardPanel title="Mentor Workload" description="Select a Mentor to view assigned Students" action={<Link href="/admin/administrators">Manage Mentors</Link>} className="dashboard-full-panel workload-panel"><div className="workload-list">{mentors.map((mentor) => { const count = active.filter((student) => student.mentor_id === mentor.id).length; return <Link href={`/admin/students?mentorId=${mentor.id}`} key={mentor.id}><ProfileAvatar name={mentor.full_name} src={mentorAvatars.get(mentor.id)} size={38} /><div className="workload-mentor-copy"><span className="workload-mentor-name" title={mentor.full_name}>{mentor.full_name}</span><strong>{count} {count === 1 ? "Student" : "Students"}</strong></div><ArrowRight size={18} aria-hidden="true" /></Link>; })}{!mentors.length ? <div className="empty-state compact-empty"><strong>No Mentors Yet</strong><p>Create a Mentor before assigning Students.</p></div> : null}</div></DashboardPanel>
     </section>
-    <DashboardPanel title="Hostel Scoreboard" description={`Top 10 · Rolling ${range} Days`} className="section-gap" action={<Link href={`/admin/reports?range=${range}`}>Open Full Report</Link>}><CategoryLeaderboard students={scopedReport} /></DashboardPanel>
-    <DashboardPanel title="Students Quick Summary" description={`Rolling ${range}-day performance`} className="section-gap"><StudentSummaryStrip students={scopedReport} hrefBase="/admin/students" /></DashboardPanel>
+    <DashboardPanel title="Hostel Scoreboard" description={`Top 10 · ${rangeLabel}`} className="section-gap" action={<Link href={`/admin/reports?range=${reportRange}`}>Open Full Report</Link>}><CategoryLeaderboard students={scopedReport} /></DashboardPanel>
+    <DashboardPanel title="Students Quick Summary" description={`Rolling ${range}-day performance`} className="section-gap student-summary-panel"><StudentSummaryStrip students={scopedReport} hrefBase="/admin/students" /></DashboardPanel>
   </main>;
 }

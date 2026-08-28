@@ -59,7 +59,12 @@ export async function getScoreSettings(): Promise<ScoreSettings> {
     .eq("id", true)
     .single();
   if (error) throw new Error("Unable to load score settings.");
-  return data as ScoreSettings;
+  const settings = data as ScoreSettings;
+  return {
+    ...settings,
+    wake_target_time: settings.wake_target_time.slice(0, 5) === "06:00" ? "04:00:00" : settings.wake_target_time,
+    bedtime_target_time: settings.bedtime_target_time.slice(0, 5) === "22:30" ? "20:30:00" : settings.bedtime_target_time,
+  };
 }
 
 export async function getStudentLeaderboardSource(startDate: string): Promise<{ students: Profile[]; entries: DailyEntry[] }> {

@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { requireProfile } from "@/lib/auth";
+import { todayInIndia } from "@/lib/date";
+import { isMissingSchemaError } from "@/lib/schema-compat";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateTemporaryPassword } from "@/lib/security";
 import type { ActionState, Profile } from "@/lib/types";
@@ -9,6 +11,7 @@ import {
   createAccountSchema,
   assignMentorSchema,
   flattenErrors,
+  optionalBirthDateSchema,
   resetAccountSchema,
   targetAccountSchema,
 } from "@/lib/validation";
@@ -249,6 +252,31 @@ export async function resetAccountPasswordAction(
     message: "Credentials reset. Copy the temporary password now.",
     temporaryPassword: password,
   };
+}
+
+export async function updateStudentBirthDateAction(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const actor = await requireProfile(["super_admin", "admin"]);
+  const targetId = resetAccountSchema.safeParse({ targetId: formData.get("targetId") });
+  const birthDate = optionalBirthDateSchema.safeParse(formData.get("birthDate") ?? "");
+  if (!targetId.success || !birthDate.success) return { status: "error", message: "Choose a valid birthdate." };
+  if (birthDate.data && birthDate.data > todayInIndia()) return { status: "error", message: "Birthdate cannot be in the future." };
+  const target = await getTarget(targetId.data.targetId);
+  if (!target || target.role !== "student" || !canManage(actor, target)) {
+    return { status: "error", message: "This student cannot be updated." };
+  }
+  const { error } = await createAdminClient()
+    .from("profiles")
+    .update({ birth_date: birthDate.data ?? null })
+    .eq("id", target.id)
+    .eq("role", "student");
+  if (isMissingSchemaError(error)) return { status: "error", message: "Birthdate editing is unavailable until the profile migration is applied." };
+  if (error) return { status: "error", message: "The birthdate could not be saved." };
+  await audit(actor.id, "student_birthdate_updated", target.id, { birthdate_set: Boolean(birthDate.data) });
+  revalidatePath(`/admin/students/${target.id}`);
+  return { status: "success", message: "Birthdate saved." };
 }
 
 export async function assignStudentMentorAction(formData: FormData): Promise<void> {

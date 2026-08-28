@@ -1,8 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
+import { todayInIndia } from "@/lib/date";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { ActionState } from "@/lib/types";
 import { attendanceEventSchema, attendancePersonSchema, attendanceRecordSchema, resourceSchema, weeklyEntrySchema, weeklyProgramSchema } from "@/lib/validation";
 
 async function audit(actorId: string, action: string, targetId: string | null, metadata: Record<string, string | boolean> = {}) {
@@ -37,15 +40,47 @@ export async function toggleResourceAction(formData: FormData): Promise<void> {
   revalidatePath("/resources");
 }
 
-export async function createWeeklyProgramAction(formData: FormData): Promise<void> {
+export async function createWeeklyProgramAction(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
   const actor = await requireProfile(["super_admin"]);
   const parsed = weeklyProgramSchema.safeParse({ programDate: formData.get("programDate") });
-  if (!parsed.success) return;
+  if (!parsed.success || parsed.data.programDate < todayInIndia()) {
+    return { status: "error", message: "Choose today or a future date." };
+  }
   const supabase = createAdminClient();
-  await supabase.from("weekly_programs").update({ is_active: false }).eq("is_active", true);
+  const [{ data: existing, error: existingError }, { data: active, error: activeError }] = await Promise.all([
+    supabase.from("weekly_programs").select("id,is_active").eq("program_date", parsed.data.programDate).maybeSingle(),
+    supabase.from("weekly_programs").select("id").eq("is_active", true).maybeSingle(),
+  ]);
+  if (existingError || activeError) return { status: "error", message: "The session could not be checked. Try again." };
+  if (existing?.is_active) {
+    revalidatePath("/weekly-program");
+    redirect("/weekly-program");
+  }
+  if (active) {
+    const { error: closeError } = await supabase.from("weekly_programs").update({ is_active: false }).eq("id", active.id);
+    if (closeError) return { status: "error", message: "The current session could not be closed." };
+  }
+  if (existing) {
+    const { error: reopenError } = await supabase.from("weekly_programs").update({ is_active: true }).eq("id", existing.id);
+    if (reopenError) {
+      if (active) await supabase.from("weekly_programs").update({ is_active: true }).eq("id", active.id);
+      return { status: "error", message: "The existing session could not be reopened. Try again." };
+    }
+    await audit(actor.id, "weekly_program_reopened", existing.id);
+    revalidatePath("/weekly-program");
+    redirect("/weekly-program");
+  }
   const { data, error } = await supabase.from("weekly_programs").insert({ program_date: parsed.data.programDate, created_by: actor.id, is_active: true }).select("id").single();
-  if (!error && data) await audit(actor.id, "weekly_program_created", data.id);
+  if (error || !data) {
+    if (active) await supabase.from("weekly_programs").update({ is_active: true }).eq("id", active.id);
+    return { status: "error", message: error?.code === "23505" ? "A Weekly Program already exists for this date." : "The session could not be opened. Try again." };
+  }
+  await audit(actor.id, "weekly_program_created", data.id);
   revalidatePath("/weekly-program");
+  redirect("/weekly-program");
 }
 
 export async function closeWeeklyProgramAction(formData: FormData): Promise<void> {
@@ -56,20 +91,25 @@ export async function closeWeeklyProgramAction(formData: FormData): Promise<void
   revalidatePath("/weekly-program");
 }
 
-export async function saveWeeklyEntryAction(formData: FormData): Promise<void> {
+export async function saveWeeklyEntryAction(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
   const actor = await requireProfile(["student"]);
   const parsed = weeklyEntrySchema.safeParse({
     programId: formData.get("programId"), attendance: formData.get("attendance"), woreDhotiKurta: formData.get("woreDhotiKurta") === "true",
   });
-  if (!parsed.success) return;
+  if (!parsed.success) return { status: "error", message: "Choose an answer for each Weekly Program question." };
   const admin = createAdminClient();
   const { data: program } = await admin.from("weekly_programs").select("id").eq("id", parsed.data.programId).eq("is_active", true).maybeSingle();
-  if (!program) return;
-  await admin.from("weekly_program_entries").upsert({
+  if (!program) return { status: "error", message: "This Weekly Program session is no longer active." };
+  const { error } = await admin.from("weekly_program_entries").upsert({
     program_id: parsed.data.programId, student_id: actor.id, attendance: parsed.data.attendance,
     wore_dhoti_kurta: parsed.data.woreDhotiKurta,
   }, { onConflict: "program_id,student_id" });
+  if (error) return { status: "error", message: "Your Weekly Program report could not be saved. Try again." };
   revalidatePath("/weekly-program");
+  return { status: "success", message: "Weekly report saved." };
 }
 
 export async function createAttendancePersonAction(formData: FormData): Promise<void> {
@@ -83,13 +123,18 @@ export async function createAttendancePersonAction(formData: FormData): Promise<
   revalidatePath("/attendance");
 }
 
-export async function createAttendanceEventAction(formData: FormData): Promise<void> {
+export async function createAttendanceEventAction(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
   const actor = await requireProfile(["super_admin"]);
   const parsed = attendanceEventSchema.safeParse({ name: formData.get("name"), statuses: formData.get("statuses") });
-  if (!parsed.success) return;
+  if (!parsed.success) return { status: "error", message: "Enter an event name and between 1 and 8 comma-separated statuses." };
   const { data, error } = await createAdminClient().from("attendance_events").insert({ name: parsed.data.name, status_options: parsed.data.statuses, created_by: actor.id }).select("id").single();
-  if (!error && data) await audit(actor.id, "attendance_event_created", data.id);
+  if (error || !data) return { status: "error", message: "The event could not be created. Try again." };
+  await audit(actor.id, "attendance_event_created", data.id);
   revalidatePath("/attendance");
+  redirect(`/attendance?eventId=${data.id}&created=1`);
 }
 
 export async function toggleAttendancePersonAction(formData: FormData): Promise<void> {

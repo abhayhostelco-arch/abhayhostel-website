@@ -47,7 +47,6 @@ export async function updateAlertSettingsAction(
     target_id: null,
     metadata: {},
   });
-  revalidatePath("/admin/alerts");
   revalidatePath("/admin/settings");
   return { status: "success", message: "Alert settings updated." };
 }

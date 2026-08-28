@@ -45,7 +45,7 @@ export default async function StudentsPage({
               <tbody>
                 {students.map((student) => (
                   <tr key={student.id}>
-                    <td><strong>{student.full_name}</strong><br /><small>{student.email}</small></td>
+                    <td><Link className="directory-profile-link" href={`${actor.role === "admin" ? "/mentor" : "/admin"}/students/${student.id}`}><span><strong>{student.full_name}</strong><small>{student.email}</small></span><span aria-hidden="true">→</span></Link></td>
                     <td>{mentors.find((mentor) => mentor.id === student.mentor_id)?.full_name ?? (actor.role === "admin" ? actor.full_name : "Unassigned")}{actor.role === "super_admin" ? <form key={`${student.id}:${student.mentor_id ?? "unassigned"}`} action={assignStudentMentorAction} className="inline-assignment"><input type="hidden" name="studentId" value={student.id} /><select name="mentorId" aria-label={`Assign Mentor for ${student.full_name}`} defaultValue={student.mentor_id ?? ""} required><option value="" disabled>Choose</option>{mentors.filter((mentor) => mentor.is_active).map((mentor) => <option key={mentor.id} value={mentor.id}>{mentor.full_name}</option>)}</select><button className="button button-secondary button-small">Assign</button></form> : null}</td>
                     <td>{student.academy_label ?? "—"}</td>
                     <td>{student.joined_on ? displayDate(student.joined_on) : "—"}</td>

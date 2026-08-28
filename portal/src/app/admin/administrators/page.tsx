@@ -24,7 +24,7 @@ export default async function AdministratorsPage() {
               <tbody>
                 {administrators.map((administrator) => (
                   <tr key={administrator.id}>
-                    <td><strong>{administrator.full_name}</strong><br /><small>{administrator.email}</small></td>
+                    <td><Link className="directory-profile-link" href={`/admin/administrators/${administrator.id}`}><span><strong>{administrator.full_name}</strong><small>{administrator.email}</small></span><span aria-hidden="true">→</span></Link></td>
                     <td><RoleBadge role={administrator.role} /></td>
                     <td><span className={`status-pill ${administrator.is_active ? "status-success" : "status-danger"}`}>{administrator.is_active ? "Active" : "Inactive"}</span></td>
                     <td>

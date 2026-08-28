@@ -24,7 +24,6 @@ export async function PortalShell({ profile, children }: { profile: Profile; chi
         { href: "/admin/administrators", label: "Mentors", icon: "mentors", group: "People" },
         ...shared,
         { href: "/admin/gita-attendance", label: "Gita Attendance", icon: "attendance", group: "Operations" },
-        { href: "/admin/alerts", label: "Alerts", icon: "alerts", group: "Insights" },
         { href: "/admin/reports", label: "Reports", icon: "reports", group: "Insights" },
         { href: "/admin/settings", label: "Settings", icon: "settings", group: "System" },
       ]
@@ -34,7 +33,6 @@ export async function PortalShell({ profile, children }: { profile: Profile; chi
           { href: "/mentor/students", label: "My Students", icon: "students", group: "People" },
           ...shared,
           { href: "/mentor/gita-attendance", label: "Gita Attendance", icon: "attendance", group: "Operations" },
-          { href: "/mentor/alerts", label: "Alerts", icon: "alerts", group: "Insights" },
           { href: "/mentor/reports", label: "Reports", icon: "reports", group: "Insights" },
         ]
       : [
@@ -60,7 +58,7 @@ export async function PortalShell({ profile, children }: { profile: Profile; chi
     <div className="portal-main">
       <header className="portal-topbar">
         <div className="mobile-brand"><Brand /></div>
-        <div className="topbar-context"><strong>Hare Krishna, {firstName}</strong><span>{profile.role === "super_admin" ? "Administration Workspace" : profile.role === "admin" ? "Mentor Workspace" : "Student Workspace"}</span></div>
+        <div className="topbar-context"><strong>{profile.role === "super_admin" ? "Hare Krishna" : `Hare Krishna, ${firstName}`}</strong><span>{profile.role === "super_admin" ? "Administration Workspace" : profile.role === "admin" ? "Mentor Workspace" : "Student Workspace"}</span></div>
         <AccountMenu profile={profile} profileHref={profileHref} avatarUrl={avatarUrl} />
       </header>
       <div id="main-content" tabIndex={-1}>{children}</div>

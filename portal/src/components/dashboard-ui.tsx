@@ -130,7 +130,7 @@ export function AttendanceHeatmap({ days }: { days: AttendanceHeatmapDay[] }) {
       <ol className="attendance-heatmap" aria-label="Recent attendance percentages">
         {days.map((day) => {
           const level = attendanceLevel(day.value);
-          return <li key={day.date}><span>{day.label}</span><i className={`attendance-cell attendance-cell-${level}`} aria-hidden="true" /><strong>{day.value === null ? "—" : `${day.value}%`}</strong><small>{day.detail}</small></li>;
+          return <li key={day.date}><span>{day.label}</span><i className={`attendance-cell attendance-cell-${level}`} aria-hidden="true" /><strong>{day.value === null ? "—" : `${day.value}%`}</strong><small className="visually-hidden">{day.detail}</small></li>;
         })}
       </ol>
       <div className="heatmap-legend" aria-label="Attendance legend"><span><i className="attendance-cell-present" />90%+</span><span><i className="attendance-cell-late" />60–89%</span><span><i className="attendance-cell-absent" />Below 60%</span><span><i className="attendance-cell-unrecorded" />Not Recorded</span></div>
@@ -151,7 +151,7 @@ export function StudentSummaryStrip({
   return (
     <div className="student-summary-strip" role="region" aria-label="Student summaries; scroll horizontally to view more" tabIndex={0}>
       {students.slice(0, 6).map((student) => {
-        const body = <><ProfileAvatar name={student.studentName} size={38} /><div><strong title={student.studentName}>{student.studentName}{student.studentId === currentStudentId ? " (You)" : ""}</strong><span>{student.submittedDays}/{student.eligibleDays} entries</span></div><b>{Math.round(student.overall)}<small>/100</small></b>{hrefBase ? <ArrowRight size={17} aria-hidden="true" /> : null}</>;
+        const body = <><ProfileAvatar name={student.studentName} size={38} /><div><strong title={student.studentName}>{student.studentName}{student.studentId === currentStudentId ? " (You)" : ""}</strong><span className="student-summary-meta">{student.submittedDays}/{student.eligibleDays} entries</span></div><b>{Math.round(student.overall)}<small>/100</small></b>{hrefBase ? <ArrowRight size={17} aria-hidden="true" /> : null}</>;
         return hrefBase ? <Link key={student.studentId} href={`${hrefBase}/${student.studentId}`}>{body}</Link> : <div key={student.studentId}>{body}</div>;
       })}
     </div>

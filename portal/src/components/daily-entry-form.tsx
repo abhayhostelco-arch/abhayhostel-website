@@ -47,6 +47,12 @@ export function DailyEntryForm({
     <>
       <form action={action} className="split-form" onChange={() => setDirty(true)}>
       {studentId ? <input type="hidden" name="studentId" value={studentId} /> : null}
+      <div className="full-span form-submit-bar">
+        <button className="button" type="submit" disabled={pending}>
+          <Save size={18} aria-hidden="true" />
+          {pending ? "Saving…" : entry ? "Update Daily Entry" : "Save Daily Entry"}
+        </button>
+      </div>
       <div className="field">
         <label htmlFor="entryDate">Wake-up date</label>
         <input
@@ -82,14 +88,14 @@ export function DailyEntryForm({
         <div className="split-form">
           <div className="field"><label htmlFor="studyHours">Study hours</label><input id="studyHours" name="studyHours" type="number" min={0} max={18} defaultValue={hours} required /></div>
           <div className="field"><label htmlFor="studyMinutes">Additional minutes</label><input id="studyMinutes" name="studyMinutes" type="number" min={0} max={59} defaultValue={minutes} required /></div>
-          <label className="checkbox-row full-span"><input name="libraryAttended" type="checkbox" defaultChecked={entry?.library_attended ?? false} /> Attended Class</label>
+          <input name="libraryAttended" type="hidden" value={entry?.library_attended ? "on" : "off"} />
         </div>
       </fieldset>
       <fieldset className="routine-section full-span">
         <legend>Discipline</legend>
         <div className="split-form">
-          <div className="field"><label htmlFor="sleepTime">Previous night sleep time</label><input id="sleepTime" name="sleepTime" type="time" defaultValue={entry?.sleep_time.slice(0, 5) ?? "22:30"} required /></div>
-          <div className="field"><label htmlFor="wakeTime">Wake-up time</label><input id="wakeTime" name="wakeTime" type="time" defaultValue={entry?.wake_time.slice(0, 5) ?? "06:00"} required /></div>
+          <div className="field"><label htmlFor="sleepTime">Previous night sleep time</label><input id="sleepTime" name="sleepTime" type="time" defaultValue={entry?.sleep_time.slice(0, 5) ?? "20:30"} required /></div>
+          <div className="field"><label htmlFor="wakeTime">Wake-up time</label><input id="wakeTime" name="wakeTime" type="time" defaultValue={entry?.wake_time.slice(0, 5) ?? "04:00"} required /></div>
         </div>
       </fieldset>
       <fieldset className="routine-section full-span">
@@ -115,12 +121,6 @@ export function DailyEntryForm({
           {state.message}
         </p>
       ) : null}
-      <div className="full-span form-submit-bar">
-        <button className="button" type="submit" disabled={pending}>
-          <Save size={18} aria-hidden="true" />
-          {pending ? "Saving…" : entry ? "Update Daily Entry" : "Save Daily Entry"}
-        </button>
-      </div>
       </form>
       <dialog
         ref={successDialogRef}

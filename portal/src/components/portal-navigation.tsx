@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
-import { BellRing, BookOpen, CalendarCheck, ChartNoAxesCombined, ClipboardCheck, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, Users, X } from "lucide-react";
+import { BookOpen, CalendarCheck, ChartNoAxesCombined, ClipboardCheck, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, Users, X } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { RoleBadge } from "@/components/role-badge";
 import type { Profile } from "@/lib/types";
 
-const icons = { dashboard: LayoutDashboard, students: Users, mentors: ShieldCheck, alerts: BellRing, reports: ChartNoAxesCombined, entry: ClipboardCheck, resources: BookOpen, weekly: CalendarCheck, attendance: CalendarCheck, settings: Settings };
+const icons = { dashboard: LayoutDashboard, students: Users, mentors: ShieldCheck, reports: ChartNoAxesCombined, entry: ClipboardCheck, resources: BookOpen, weekly: CalendarCheck, attendance: CalendarCheck, settings: Settings };
 export type PortalLink = { href: string; label: string; icon: keyof typeof icons; group: "Overview" | "People" | "Operations" | "Insights" | "System" };
 
 function isActive(pathname: string, href: string) {

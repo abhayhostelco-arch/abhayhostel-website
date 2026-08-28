@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
+import { CircleCheck, CircleX } from "lucide-react";
 import { TrendChart } from "@/components/trend-chart";
 import { CategoryGrowthChart, OverallGrowthChart } from "@/components/growth-score-charts";
 import { GrowthScoreCards } from "@/components/growth-score-cards";
@@ -11,12 +13,13 @@ import { daysAgoInIndia, displayDate, isWithinEntryWindow, todayInIndia } from "
 import { getEntries, getProfiles, getScoreSettings } from "@/lib/data";
 import { buildGrowthReport } from "@/lib/growth-score";
 import { ProfileAvatar } from "@/components/profile-avatar";
+import { StudentBirthDateForm } from "@/components/student-birthdate-form";
 import { getAvatarSignedUrl, getProfileEnhancements } from "@/lib/data";
 
 export const metadata: Metadata = { title: "Student trends" };
 
 export default async function StudentDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ range?: string; date?: string }> }) {
-  await requireProfile(["super_admin", "admin"]);
+  const actor = await requireProfile(["super_admin", "admin"]);
   const { id } = await params;
   const query = await searchParams;
   if (!z.uuid().safeParse(id).success) notFound();
@@ -39,12 +42,11 @@ export default async function StudentDetailPage({ params, searchParams }: { para
   const correctionEntry = entries.find((entry) => entry.entry_date === correctionDate);
   return (
     <main className="page-container">
-      <header className="page-heading student-profile-heading"><ProfileAvatar name={student.full_name} src={avatarUrl} size={72} className="profile-heading-avatar" /><div><p className="eyebrow">Student trends</p><h1>{student.full_name}</h1><p>{student.email} · {student.academy_label ?? "No academy label"}</p><p className="field-hint">Birthdate: {enhancements.available ? (enhancements.birthDate ? displayDate(enhancements.birthDate) : "Not provided") : "Available after migration"}</p></div></header>
-      <section className="panel">
-        <form className="filters" method="get"><div className="field"><label htmlFor="range">Range</label><select id="range" name="range" defaultValue={String(range)}><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option></select></div><button className="button button-secondary" type="submit">Update summary</button></form>
+      <header className="page-heading student-profile-heading"><ProfileAvatar name={student.full_name} src={avatarUrl} size={72} className="profile-heading-avatar" /><div className="student-profile-identity"><p className="eyebrow">Student Trends</p><h1>{student.full_name}<span className={`profile-status-mark ${student.is_active ? "profile-status-active" : "profile-status-inactive"}`} title={student.is_active ? "Active Student" : "Inactive Student"}>{student.is_active ? <CircleCheck size={20} aria-hidden="true" /> : <CircleX size={20} aria-hidden="true" />}<span className="visually-hidden">{student.is_active ? "Active Student" : "Inactive Student"}</span></span></h1><p>{student.email} · {student.academy_label ?? "No academy label"}</p>{enhancements.available ? <StudentBirthDateForm studentId={student.id} birthDate={enhancements.birthDate} displayBirthDate={enhancements.birthDate ? displayDate(enhancements.birthDate) : null} maxDate={todayInIndia()} /> : <p className="field-hint">Birthdate editing is available after the profile migration.</p>}</div><div className="student-profile-tools"><form className="student-range-filter" method="get"><div className="field"><label htmlFor="range">Report Range</label><select id="range" name="range" defaultValue={String(range)}><option value="7">7 Days</option><option value="30">30 Days</option><option value="90">90 Days</option></select></div><button className="button button-secondary button-small" type="submit">Apply</button></form>{actor.role === "super_admin" ? <Link className="button" href="/admin/students/new">Add Student</Link> : null}</div></header>
+      <section className={`student-overview-grid section-gap-small${personalGrowth ? "" : " student-overview-grid-single"}`}>
+        <section className="metric-grid student-detail-metrics" aria-label="Student Summary"><article className="metric-card"><span>{range}-day entries</span><strong>{entries.length}</strong></article><article className="metric-card"><span>Average sleep</span><strong>{formatMinutes(average(entries.map((entry) => sleepDurationMinutes(entry.sleep_time, entry.wake_time))))}</strong></article><article className="metric-card"><span>Total study</span><strong>{formatMinutes(totalStudy)}</strong></article><article className="metric-card"><span>Total chanting</span><strong>{totalRounds === null ? "—" : `${totalRounds} rounds`}</strong></article></section>
+        {personalGrowth ? <section className="panel student-growth-summary"><div className="panel-title"><h2>Growth Score</h2><span>{activeGrowth ? `Rank #${activeGrowth.rank}` : "Historical report"}</span></div><GrowthScoreCards scores={personalGrowth} /></section> : null}
       </section>
-      <section className="metric-grid section-gap-small"><article className="metric-card"><span>{range}-day entries</span><strong>{entries.length}</strong></article><article className="metric-card"><span>Average sleep</span><strong>{formatMinutes(average(entries.map((entry) => sleepDurationMinutes(entry.sleep_time, entry.wake_time))))}</strong></article><article className="metric-card"><span>Total study</span><strong>{formatMinutes(totalStudy)}</strong></article><article className="metric-card"><span>Total chanting</span><strong>{totalRounds === null ? "—" : `${totalRounds} rounds`}</strong></article><article className="metric-card"><span>Status</span><strong>{student.is_active ? "Active" : "Inactive"}</strong></article></section>
-      {personalGrowth ? <section className="panel section-gap"><div className="panel-title"><h2>Growth Score</h2><span>{activeGrowth ? `Rank #${activeGrowth.rank}` : "Historical report"}</span></div><GrowthScoreCards scores={personalGrowth} /></section> : null}
       {personalGrowth ? <section className="content-grid"><article className="panel"><div className="panel-title"><h2>Overall score trend</h2></div><OverallGrowthChart data={growthChartData} /></article><article className="panel"><div className="panel-title"><h2>Category comparison</h2></div><CategoryGrowthChart scores={personalGrowth} /></article></section> : null}
       <section className="panel section-gap"><div className="panel-title"><div><h2>Mentor correction</h2><span>Authorized staff may correct the last 90 days.</span></div></div><form className="filters" method="get"><input type="hidden" name="range" value={range} /><div className="field"><label htmlFor="date">Entry date</label><input id="date" name="date" type="date" min={daysAgoInIndia(89)} max={todayInIndia()} defaultValue={correctionDate} /></div><button className="button button-secondary">Load entry</button></form><DailyEntryForm key={correctionDate} studentId={student.id} selectedDate={correctionDate} entry={correctionEntry} minDate={daysAgoInIndia(89)} maxDate={todayInIndia()} /></section>
       <section className="panel section-gap"><div className="panel-title"><h2>{range}-day trend</h2></div><TrendChart data={chartData} /></section>
