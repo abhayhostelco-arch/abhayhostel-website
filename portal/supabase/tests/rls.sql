@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(38);
+select plan(49);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -48,6 +48,10 @@ select lives_ok(
   $$ update public.alert_settings set min_study_minutes = 120 $$,
   'student settings update is filtered by RLS'
 );
+select lives_ok(
+  $$ update public.profiles set birth_date = '2005-01-20' where id = '00000000-0000-4000-8000-000000000002' $$,
+  'student cross-profile detail update is filtered by RLS'
+);
 select throws_ok(
   $$ update public.profiles set role = 'super_admin' where id = '00000000-0000-4000-8000-000000000001' $$,
   '42501', null, 'student cannot escalate role'
@@ -60,6 +64,7 @@ select is((select count(*)::integer from public.score_settings), 1, 'active stud
 
 reset role;
 select is((select min_study_minutes::integer from public.alert_settings), 240, 'student cannot change global settings');
+select is((select birth_date from public.profiles where id = '00000000-0000-4000-8000-000000000002'), null, 'student cannot change another profile details');
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', true);
 select lives_ok($$ update public.score_settings set study_weight = 30 $$, 'student score-settings update is filtered by RLS');
@@ -99,11 +104,16 @@ select lives_ok(
   $$ update public.alert_settings set min_study_minutes = 120 $$,
   'admin settings update is filtered by RLS'
 );
+select lives_ok(
+  $$ update public.profiles set birth_date = '2005-01-20' where id = '00000000-0000-4000-8000-000000000001' $$,
+  'Mentor profile-detail update is filtered by RLS'
+);
 select lives_ok($$ update public.score_settings set study_weight = 30 $$, 'admin score-settings update is filtered by RLS');
 
 reset role;
 select is((select count(*)::integer from public.daily_entries where note = 'admin edit'), 1, 'Mentor correction persists for assigned student');
 select is((select min_study_minutes::integer from public.alert_settings), 240, 'admin cannot change global settings');
+select is((select birth_date from public.profiles where id = '00000000-0000-4000-8000-000000000001'), null, 'Mentor cannot change student-owned profile details');
 select is((select study_weight::integer from public.score_settings), 25, 'admin cannot change score settings');
 update public.profiles set is_active = false where id = '00000000-0000-4000-8000-000000000001';
 set local role authenticated;
@@ -142,6 +152,35 @@ select lives_ok(
   'Student can submit the active Weekly Program'
 );
 select is((select count(*)::integer from public.attendance_events), 1, 'Student can read attendance events without a shared password');
+
+select lives_ok(
+  $$ update public.profiles set birth_date = '2005-01-20' where id = '00000000-0000-4000-8000-000000000002' $$,
+  'Student can update their own birth date'
+);
+select is((select count(*)::integer from public.gita_class_attendance), 0, 'Student cannot read official Gita attendance');
+select throws_ok(
+  $$ insert into public.gita_class_attendance (student_id, attendance_date, status, recorded_by) values ('00000000-0000-4000-8000-000000000002', (now() at time zone 'Asia/Kolkata')::date, 'present', '00000000-0000-4000-8000-000000000002') $$,
+  '42501', null, 'Student cannot record official Gita attendance'
+);
+
+reset role;
+update public.profiles set is_active = true where id = '00000000-0000-4000-8000-000000000001';
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000004', true);
+select lives_ok(
+  $$ insert into public.gita_class_attendance (student_id, attendance_date, status, recorded_by) values ('00000000-0000-4000-8000-000000000001', (now() at time zone 'Asia/Kolkata')::date, 'present', '00000000-0000-4000-8000-000000000004'), ('00000000-0000-4000-8000-000000000002', (now() at time zone 'Asia/Kolkata')::date, 'absent', '00000000-0000-4000-8000-000000000004') $$,
+  'Admin can record official attendance for all students'
+);
+select is((select count(*)::integer from public.gita_class_attendance), 2, 'Admin can read all official attendance');
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000003', true);
+select is((select count(*)::integer from public.gita_class_attendance), 1, 'Mentor sees assigned-student attendance only');
+
+reset role;
+update public.profiles set is_active = false where id = '00000000-0000-4000-8000-000000000001';
+select is((select count(*)::integer from public.gita_class_attendance where student_id = '00000000-0000-4000-8000-000000000001'), 1, 'Official attendance remains after student deactivation');
 
 select * from finish();
 rollback;

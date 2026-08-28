@@ -43,10 +43,11 @@ describe("Growth Score", () => {
     expect(Math.round(report.students[0].overall)).toBe(33);
   });
 
-  it("shares ranks when displayed scores tie and excludes inactive students", () => {
+  it("uses unique ranks and alphabetical ordering for displayed-score ties while excluding inactive students", () => {
     const inactive = { ...student("c", "Charlie"), is_active: false };
     const report = buildGrowthReport([student("a", "Alpha"), student("b", "Beta"), inactive], [entry("a"), entry("b")], { ...settings, score_start_date: "2026-08-22" }, 1, new Date("2026-08-22T06:30:00Z"));
-    expect(report.students.map((value) => value.rank)).toEqual([1, 1]);
+    expect(report.students.map((value) => value.rank)).toEqual([1, 2]);
+    expect(report.students.map((value) => value.studentName)).toEqual(["Alpha", "Beta"]);
     expect(report.students.map((value) => value.studentName)).not.toContain("Charlie");
   });
 

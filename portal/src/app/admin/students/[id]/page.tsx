@@ -10,6 +10,8 @@ import { requireProfile } from "@/lib/auth";
 import { daysAgoInIndia, displayDate, isWithinEntryWindow, todayInIndia } from "@/lib/date";
 import { getEntries, getProfiles, getScoreSettings } from "@/lib/data";
 import { buildGrowthReport } from "@/lib/growth-score";
+import { ProfileAvatar } from "@/components/profile-avatar";
+import { getAvatarSignedUrl, getProfileEnhancements } from "@/lib/data";
 
 export const metadata: Metadata = { title: "Student trends" };
 
@@ -23,6 +25,8 @@ export default async function StudentDetailPage({ params, searchParams }: { para
   const [students, scoreSettings] = await Promise.all([getProfiles("student"), getScoreSettings()]);
   const student = students.find((profile) => profile.id === id);
   if (!student) notFound();
+  const enhancements = await getProfileEnhancements(student.id);
+  const avatarUrl = enhancements.available ? await getAvatarSignedUrl(enhancements.avatarPath) : null;
   const activeStudents = students.filter((profile) => profile.is_active);
   const activeEntries = await getEntries({ startDate: daysAgoInIndia(range - 1), studentIds: activeStudents.map((profile) => profile.id) });
   const entries = student.is_active ? activeEntries.filter((entry) => entry.student_id === id) : await getEntries({ startDate: daysAgoInIndia(range - 1), studentId: id });
@@ -35,7 +39,7 @@ export default async function StudentDetailPage({ params, searchParams }: { para
   const correctionEntry = entries.find((entry) => entry.entry_date === correctionDate);
   return (
     <main className="page-container">
-      <header className="page-heading"><div><p className="eyebrow">Student trends</p><h1>{student.full_name}</h1><p>{student.email} · {student.academy_label ?? "No academy label"}</p></div></header>
+      <header className="page-heading student-profile-heading"><ProfileAvatar name={student.full_name} src={avatarUrl} size={72} className="profile-heading-avatar" /><div><p className="eyebrow">Student trends</p><h1>{student.full_name}</h1><p>{student.email} · {student.academy_label ?? "No academy label"}</p><p className="field-hint">Birthdate: {enhancements.available ? (enhancements.birthDate ? displayDate(enhancements.birthDate) : "Not provided") : "Available after migration"}</p></div></header>
       <section className="panel">
         <form className="filters" method="get"><div className="field"><label htmlFor="range">Range</label><select id="range" name="range" defaultValue={String(range)}><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option></select></div><button className="button button-secondary" type="submit">Update summary</button></form>
       </section>

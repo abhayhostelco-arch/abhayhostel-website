@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Alerts" };
 export default async function AlertsPage({ searchParams }: { searchParams: Promise<{ range?: string; type?: string }> }) {
   const actor = await requireProfile(["super_admin", "admin"]);
   const params = await searchParams;
-  const range = params.range === "30" || params.range === "90" ? Number(params.range) : 7;
+  const range = params.range === "7" || params.range === "90" ? Number(params.range) : 30;
   const allowedTypes = ["all", "missing", "sleep", "study", "absence"];
   const type = allowedTypes.includes(params.type ?? "") ? params.type! : "all";
   const students = await getProfiles("student", true);

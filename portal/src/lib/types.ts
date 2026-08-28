@@ -13,6 +13,18 @@ export interface Profile {
   must_change_password: boolean;
   created_by: string | null;
   mentor_id: string | null;
+  birth_date?: string | null;
+  avatar_path?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GitaClassAttendance {
+  id: string;
+  student_id: string;
+  attendance_date: string;
+  status: GitaClassStatus;
+  recorded_by: string;
   created_at: string;
   updated_at: string;
 }

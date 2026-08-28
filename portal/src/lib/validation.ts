@@ -135,6 +135,24 @@ export const attendanceRecordSchema = z.object({
   eventId: z.uuid(), personId: z.uuid(), attendanceDate: z.iso.date(), status: z.string().trim().min(1).max(40), remark: optionalText(300),
 });
 
+export const optionalBirthDateSchema = z.preprocess(
+  (value) => value === "" || value === null ? undefined : value,
+  z.iso.date().optional(),
+);
+
+export const avatarUploadSchema = z.object({
+  type: z.enum(["image/jpeg", "image/png", "image/webp"]),
+  size: z.number().int().positive().max(2 * 1024 * 1024),
+});
+
+export const avatarPathSchema = z.string().max(240).regex(
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/avatar-[0-9]+\.(?:jpg|jpeg|png|webp)$/i,
+  "Invalid avatar path.",
+);
+
+export const gitaAttendanceDateSchema = z.iso.date();
+export const gitaAttendanceStatusSchema = z.enum(["present", "absent", "no_class"]);
+
 export function flattenErrors(error: z.ZodError): Record<string, string[]> {
   return error.flatten().fieldErrors as Record<string, string[]>;
 }

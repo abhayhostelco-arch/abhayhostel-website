@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Suspense, type ReactNode } from "react";
 import { Inter } from "next/font/google";
 import { NavigationProgress } from "@/components/navigation-progress";
+import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
 import "./globals.css";
 
 const inter = Inter({
@@ -17,6 +18,10 @@ export const metadata: Metadata = {
   },
   description:
     "Secure student routine tracking and hostel administration for Abhay Hostel.",
+  manifest: "/manifest.webmanifest",
+  applicationName: "Abhay Hostel",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Abhay Hostel" },
+  icons: { apple: "/icon-192.png" },
   robots: { index: false, follow: false, nocache: true },
 };
 
@@ -29,6 +34,7 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <body>
         <Suspense fallback={null}><NavigationProgress /></Suspense>
+        <ServiceWorkerRegistration />
         {children}
       </body>
     </html>

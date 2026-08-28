@@ -1,7 +1,8 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { AlertSettings, AttendanceEvent, AttendancePerson, AttendanceRecord, DailyEntry, Profile, ScoreSettings, SharedResource, WeeklyProgram, WeeklyProgramEntry } from "@/lib/types";
+import type { AlertSettings, AttendanceEvent, AttendancePerson, AttendanceRecord, DailyEntry, GitaClassAttendance, Profile, ScoreSettings, SharedResource, WeeklyProgram, WeeklyProgramEntry } from "@/lib/types";
+import { isMissingSchemaError } from "@/lib/schema-compat";
 
 export async function getProfiles(role?: "admin" | "student", activeOnly = false): Promise<Profile[]> {
   const supabase = await createClient();
@@ -125,4 +126,49 @@ export async function getAttendanceEventPeople(personIds: string[] | null): Prom
   const { data, error } = await query;
   if (error) throw new Error("Unable to load attendance mappings.");
   return data ?? [];
+}
+
+export async function getProfileEnhancements(profileId: string): Promise<{
+  available: boolean;
+  birthDate: string | null;
+  avatarPath: string | null;
+}> {
+  const { data, error } = await (await createClient())
+    .from("profiles")
+    .select("birth_date,avatar_path")
+    .eq("id", profileId)
+    .maybeSingle();
+  if (isMissingSchemaError(error)) return { available: false, birthDate: null, avatarPath: null };
+  if (error) throw new Error("Unable to load profile settings.");
+  return {
+    available: true,
+    birthDate: data?.birth_date ?? null,
+    avatarPath: data?.avatar_path ?? null,
+  };
+}
+
+export async function getAvatarSignedUrl(avatarPath?: string | null): Promise<string | null> {
+  if (!avatarPath) return null;
+  const { data, error } = await createAdminClient().storage
+    .from("student-avatars")
+    .createSignedUrl(avatarPath, 60 * 60);
+  if (error) return null;
+  return data.signedUrl;
+}
+
+export async function getGitaAttendance(
+  startDate: string,
+  studentIds: string[],
+): Promise<{ available: boolean; records: GitaClassAttendance[] }> {
+  if (studentIds.length === 0) return { available: true, records: [] };
+  const { data, error } = await createAdminClient()
+    .from("gita_class_attendance")
+    .select("*")
+    .in("student_id", studentIds)
+    .gte("attendance_date", startDate)
+    .order("attendance_date", { ascending: false })
+    .limit(5000);
+  if (isMissingSchemaError(error)) return { available: false, records: [] };
+  if (error) throw new Error("Unable to load official Gita attendance.");
+  return { available: true, records: (data ?? []) as GitaClassAttendance[] };
 }

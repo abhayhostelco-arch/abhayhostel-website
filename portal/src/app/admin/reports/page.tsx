@@ -14,7 +14,7 @@ import { reportQuerySchema } from "@/lib/validation";
 export const metadata: Metadata = { title: "Reports" };
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ range?: string; studentId?: string }> }) {
-  await requireProfile(["super_admin", "admin"]);
+  const actor = await requireProfile(["super_admin", "admin"]);
   const raw = await searchParams;
   const parsed = reportQuerySchema.safeParse(raw);
   const range = parsed.success ? Number(parsed.data.range) : 30;
@@ -44,11 +44,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   if (studentId) exportQuery.set("studentId", studentId);
   return (
     <main className="page-container">
-      <header className="page-heading"><div><p className="eyebrow">Insights / Analysis</p><h1>Routine Reports</h1><p>Compare submission, sleep, study, chanting, and attendance trends.</p></div><a className="button" href={`/api/reports/export?${exportQuery}`}><Download size={18} aria-hidden="true" /> Export CSV</a></header>
+      <header className="page-heading"><div><p className="eyebrow">Insights / Analysis</p><h1>Student Routine Reports</h1><p>Review the last 30 days by default, select {actor.role === "super_admin" ? "any active student" : "an assigned active student"}, and compare submission, sleep, study, chanting, and attendance trends.</p></div><a className="button" href={`/api/reports/export?${exportQuery}`}><Download size={18} aria-hidden="true" /> Export CSV</a></header>
       <section className="panel">
         <form className="filters" method="get">
           <div className="field"><label htmlFor="range">Range</label><select id="range" name="range" defaultValue={String(range)}><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option></select></div>
-          <div className="field"><label htmlFor="studentId">Student</label><select id="studentId" name="studentId" defaultValue={studentId ?? ""}><option value="">All active students</option>{activeStudents.map((student) => <option key={student.id} value={student.id}>{student.full_name}</option>)}</select></div>
+          <div className="field"><label htmlFor="studentId">Student</label><select id="studentId" name="studentId" defaultValue={studentId ?? ""}><option value="">{actor.role === "super_admin" ? "All active students" : "All assigned students"}</option>{activeStudents.map((student) => <option key={student.id} value={student.id}>{student.full_name}</option>)}</select></div>
           <button className="button button-secondary" type="submit">Update Report</button>
         </form>
       </section>

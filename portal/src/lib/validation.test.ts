@@ -11,6 +11,9 @@ import {
   reportQuerySchema,
   scoreSettingsSchema,
   targetAccountSchema,
+  optionalBirthDateSchema,
+  avatarPathSchema,
+  avatarUploadSchema,
 } from "@/lib/validation";
 
 describe("password validation", () => {
@@ -18,6 +21,22 @@ describe("password validation", () => {
     expect(passwordSchema.safeParse("short").success).toBe(false);
     expect(passwordSchema.safeParse("LongButNoNumber!xx").success).toBe(false);
     expect(passwordSchema.safeParse("StrongPassword9!").success).toBe(true);
+  });
+});
+
+describe("profile enhancements", () => {
+  it("accepts an optional birthdate and rejects malformed values", () => {
+    expect(optionalBirthDateSchema.parse("")).toBeUndefined();
+    expect(optionalBirthDateSchema.parse("2005-01-20")).toBe("2005-01-20");
+    expect(optionalBirthDateSchema.safeParse("20/01/2005").success).toBe(false);
+  });
+
+  it("allows only safe avatar types, sizes, and owned-path shapes", () => {
+    expect(avatarUploadSchema.safeParse({ type: "image/webp", size: 1024 }).success).toBe(true);
+    expect(avatarUploadSchema.safeParse({ type: "image/svg+xml", size: 1024 }).success).toBe(false);
+    expect(avatarUploadSchema.safeParse({ type: "image/png", size: 2 * 1024 * 1024 + 1 }).success).toBe(false);
+    expect(avatarPathSchema.safeParse("00000000-0000-4000-8000-000000000001/avatar-1724800000000.png").success).toBe(true);
+    expect(avatarPathSchema.safeParse("../someone/avatar.png").success).toBe(false);
   });
 });
 
@@ -100,6 +119,7 @@ describe("settings and report input", () => {
   });
 
   it("accepts only capped report ranges and UUID filters", () => {
+    expect(reportQuerySchema.parse({}).range).toBe("30");
     expect(reportQuerySchema.parse({ range: "90" }).range).toBe("90");
     expect(reportQuerySchema.safeParse({ range: "365" }).success).toBe(false);
     expect(reportQuerySchema.safeParse({ range: "30", studentId: "x' OR 1=1--" }).success).toBe(false);

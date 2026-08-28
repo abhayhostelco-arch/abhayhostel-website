@@ -130,15 +130,10 @@ export function buildGrowthReport(
       rank: 0,
       daily,
     };
-  }).sort((a, b) => Math.round(b.overall) - Math.round(a.overall) || a.studentName.localeCompare(b.studentName));
+  }).sort((a, b) => Math.round(b.overall) - Math.round(a.overall) || a.studentName.localeCompare(b.studentName, undefined, { sensitivity: "base" }));
 
-  let previousRounded: number | null = null;
-  let previousRank = 0;
   reports.forEach((report, index) => {
-    const rounded = Math.round(report.overall);
-    report.rank = previousRounded === rounded ? previousRank : index + 1;
-    previousRounded = rounded;
-    previousRank = report.rank;
+    report.rank = index + 1;
   });
 
   const divisor = Math.max(reports.length, 1);
