@@ -12,17 +12,19 @@ export const metadata: Metadata = { title: "Students" };
 export default async function StudentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; mentorId?: string }>;
 }) {
   const actor = await requireProfile(["super_admin", "admin"]);
   const params = await searchParams;
   const query = (params.q ?? "").trim().toLowerCase().slice(0, 120);
   const status = params.status === "inactive" ? "inactive" : params.status === "all" ? "all" : "active";
   const [allStudents, mentors] = await Promise.all([getProfiles("student"), actor.role === "super_admin" ? getProfiles("admin") : Promise.resolve([])]);
+  const mentorId = actor.role === "super_admin" && mentors.some((mentor) => mentor.id === params.mentorId) ? params.mentorId : undefined;
   const students = allStudents.filter((student) => {
     const searchMatch = !query || `${student.full_name} ${student.email} ${student.academy_label ?? ""}`.toLowerCase().includes(query);
     const statusMatch = status === "all" || student.is_active === (status === "active");
-    return searchMatch && statusMatch;
+    const mentorMatch = !mentorId || student.mentor_id === mentorId;
+    return searchMatch && statusMatch && mentorMatch;
   });
 
   return (
@@ -30,11 +32,12 @@ export default async function StudentsPage({
       <header className="page-heading"><div><p className="eyebrow">{actor.role === "super_admin" ? "People" : "Mentor workspace"}</p><h1>{actor.role === "super_admin" ? "Students" : "My Students"}</h1><p>{actor.role === "super_admin" ? "Manage student access, Mentor assignments, and hostel records." : "Review, correct, and support your assigned students."}</p></div>{actor.role === "super_admin" ? <Link className="button" href="/admin/students/new">Add Student</Link> : null}</header>
       <section>
         <article className="panel">
-          <div className="panel-title"><h2>Student directory</h2></div>
+          <div className="panel-title"><h2>Student Directory</h2><span>{students.length} {students.length === 1 ? "Student" : "Students"}</span></div>
           <form className="filters" method="get">
-            <div className="field"><label htmlFor="q">Search</label><input id="q" name="q" defaultValue={params.q ?? ""} maxLength={120} /></div>
+            <div className="field"><label htmlFor="q">Search</label><input id="q" name="q" type="search" defaultValue={params.q ?? ""} maxLength={120} autoComplete="off" placeholder="Search by name, email, or academy…" /></div>
             <div className="field"><label htmlFor="status">Status</label><select id="status" name="status" defaultValue={status}><option value="active">Active</option><option value="inactive">Inactive</option><option value="all">All</option></select></div>
-            <button className="button button-secondary" type="submit">Apply filters</button>
+            {actor.role === "super_admin" ? <div className="field"><label htmlFor="mentorId">Mentor</label><select id="mentorId" name="mentorId" defaultValue={mentorId ?? ""}><option value="">All Mentors</option>{mentors.map((mentor) => <option key={mentor.id} value={mentor.id}>{mentor.full_name}</option>)}</select></div> : null}
+            <button className="button button-secondary" type="submit">Apply Filters</button>
           </form>
           <div className="table-wrap">
             <table>

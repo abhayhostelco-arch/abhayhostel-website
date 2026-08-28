@@ -18,7 +18,7 @@ export function AccountResetForm({ targetId }: { targetId: string }) {
         <KeyRound size={14} aria-hidden="true" /> Reset
       </button>
       {state.message ? (
-        <p className={`form-message ${state.status === "success" ? "form-success" : "form-error"}`}>
+        <p className={`form-message ${state.status === "success" ? "form-success" : "form-error"}`} role={state.status === "success" ? "status" : "alert"}>
           {state.message}
         </p>
       ) : null}

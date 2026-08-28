@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Camera, Trash2 } from "lucide-react";
 import { updateProfileAction } from "@/app/actions/profile";
 import { createClient } from "@/lib/supabase/client";
@@ -30,10 +30,15 @@ export function ProfileSettingsForm({
 }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+  const previewObjectUrlRef = useRef<string | null>(null);
   const [preview, setPreview] = useState<string | null>(avatarUrl);
   const [removeAvatar, setRemoveAvatar] = useState(false);
   const [state, setState] = useState<ActionState>(initialActionState);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => () => {
+    if (previewObjectUrlRef.current) URL.revokeObjectURL(previewObjectUrlRef.current);
+  }, []);
 
   function chooseFile(file?: File) {
     if (!file) return;
@@ -44,7 +49,9 @@ export function ProfileSettingsForm({
       return;
     }
     setRemoveAvatar(false);
-    setPreview(URL.createObjectURL(file));
+    if (previewObjectUrlRef.current) URL.revokeObjectURL(previewObjectUrlRef.current);
+    previewObjectUrlRef.current = URL.createObjectURL(file);
+    setPreview(previewObjectUrlRef.current);
     setState(initialActionState);
   }
 
@@ -96,12 +103,12 @@ export function ProfileSettingsForm({
       <div><h2 id="avatar-title">Profile picture</h2><p className="field-hint">JPG, PNG, or WebP. Maximum 2 MB.</p></div>
       <label className="button button-secondary" htmlFor="avatarFile"><Camera size={17} aria-hidden="true" /> Choose picture</label>
       <input ref={fileRef} className="visually-hidden" id="avatarFile" name="avatarFile" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => chooseFile(event.target.files?.[0])} />
-      {(avatarPath || preview) && !removeAvatar ? <button className="button button-danger" type="button" onClick={() => { setRemoveAvatar(true); setPreview(null); if (fileRef.current) fileRef.current.value = ""; }}><Trash2 size={17} aria-hidden="true" /> Remove picture</button> : null}
+      {(avatarPath || preview) && !removeAvatar ? <button className="button button-danger" type="button" onClick={() => { setRemoveAvatar(true); setPreview(null); if (previewObjectUrlRef.current) { URL.revokeObjectURL(previewObjectUrlRef.current); previewObjectUrlRef.current = null; } if (fileRef.current) fileRef.current.value = ""; }}><Trash2 size={17} aria-hidden="true" /> Remove Picture</button> : null}
     </section>
     <section className="profile-fields" aria-labelledby="personal-title">
       <div><h2 id="personal-title">{showBirthDate ? "Personal details" : "Profile picture"}</h2><p className="field-hint">Only you can change these profile details.</p></div>
       {showBirthDate ? <div className="field"><label htmlFor="birthDate">Birthdate (optional)</label><input id="birthDate" name="birthDate" type="date" defaultValue={birthDate ?? ""} max={maxDate} /></div> : null}
-      {state.message ? <p className={`form-message ${state.status === "success" ? "form-success" : "form-error"}`} role="status">{state.message}</p> : null}
+      {state.message ? <p className={`form-message ${state.status === "success" ? "form-success" : "form-error"}`} role={state.status === "success" ? "status" : "alert"}>{state.message}</p> : null}
       <button className="button" type="submit" disabled={pending}>{pending ? "Saving…" : "Save profile"}</button>
     </section>
   </form>;

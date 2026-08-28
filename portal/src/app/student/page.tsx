@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BookOpenCheck, CheckCircle2, Clock3, MoonStar, Sunrise, XCircle } from "lucide-react";
+import { BookOpen, BookOpenCheck, CheckCircle2, ClipboardCheck, Clock3, HeartHandshake, MoonStar, Sparkles, Sunrise, XCircle } from "lucide-react";
 import { CategoryLeaderboard } from "@/components/category-leaderboard";
-import { GrowthScoreCards } from "@/components/growth-score-cards";
+import { ActivityList, AttendanceHeatmap, DashboardMetric, DashboardPanel, ScoreOverview, type ActivityItem } from "@/components/dashboard-ui";
+import { OverallGrowthChart } from "@/components/growth-score-charts";
 import { requireProfile } from "@/lib/auth";
 import { formatMinutes, sleepDurationMinutes } from "@/lib/analytics";
 import { daysAgoInIndia, displayDate, todayInIndia } from "@/lib/date";
@@ -29,18 +30,42 @@ export default async function StudentDashboard() {
     ["Study", todayEntry ? formatMinutes(todayEntry.study_minutes) : "Not filled", Clock3],
     ["Sleep", todayEntry ? formatMinutes(sleepDurationMinutes(todayEntry.sleep_time, todayEntry.wake_time)) : "Not filled", MoonStar],
   ] as const;
+  const score = mine ?? report.averages;
+  const heatmapDays = (mine?.daily ?? []).map((day) => ({
+    date: day.date,
+    label: new Intl.DateTimeFormat("en-IN", { weekday: "short", timeZone: "Asia/Kolkata" }).format(new Date(`${day.date}T12:00:00+05:30`)),
+    value: day.submitted ? 100 : 0,
+    detail: day.submitted ? `${Math.round(day.overall)}/100 Score` : "Missing",
+  }));
+  const activityItems: ActivityItem[] = entries.slice(0, 5).map((entry) => ({
+    id: entry.id,
+    title: entry.entry_date === today ? "Today’s Entry Submitted" : "Daily Entry Submitted",
+    description: `${formatMinutes(entry.study_minutes)} study · ${entry.chanting_rounds ?? 0} rounds`,
+    meta: displayDate(entry.entry_date),
+    icon: ClipboardCheck,
+    tone: entry.entry_date === today ? "green" : "blue",
+  }));
 
   return <main className="page-container">
-    <header className="page-heading hero-heading">
+    <header className="page-heading dashboard-heading">
       <div><p className="eyebrow">Student Dashboard</p><h1>Hare Krishna, {profile.full_name.split(" ")[0]}</h1><p>Your 7-day Growth Score and today’s Sadhana at a glance.</p></div>
       <Link className="button" href={`/student/entry?date=${today}`}>{todayEntry ? "Edit Today’s Entry" : "Fill Today’s Entry"}</Link>
     </header>
-    <section aria-labelledby="weekly-score-title"><div className="panel-title"><h2 id="weekly-score-title">Last 7 days</h2><span>{mine?.submittedDays ?? 0}/{mine?.eligibleDays ?? 0} entries submitted</span></div><GrowthScoreCards scores={mine ?? report.averages} /></section>
-    <section className="dashboard-grid section-gap">
-      <article className="panel"><div className="panel-title"><h2>Today’s Sadhana</h2><span className={`status-pill ${todayEntry ? "status-success" : "status-warning"}`}>{todayEntry ? "Submitted" : "Pending"}</span></div><div className="sadhana-list">{tasks.map(([label, value, Icon]) => <div key={label} className="sadhana-row"><Icon size={19} aria-hidden="true" /><span>{label}</span><strong>{value}</strong>{todayEntry ? <CheckCircle2 size={17} className="success-icon" aria-label="Filled" /> : <XCircle size={17} className="danger-icon" aria-label="Missing" />}</div>)}</div><Link className="button button-secondary full-width" href={`/student/entry?date=${today}`}>{todayEntry ? "View or edit full entry" : "Complete today’s entry"}</Link></article>
-      <article className="panel"><div className="panel-title"><h2>Submission calendar</h2><span>Missing days score zero</span></div><div className="week-strip">{(mine?.daily ?? []).map((day) => <div key={day.date} className={`day-tile ${day.submitted ? "day-submitted" : "day-missing"}`}><span>{new Intl.DateTimeFormat("en-IN", { weekday: "short", timeZone: "Asia/Kolkata" }).format(new Date(`${day.date}T12:00:00+05:30`))}</span><strong>{Math.round(day.overall)}</strong><small>{day.submitted ? "Filled" : "Missing"}</small></div>)}</div><p className="field-hint">You can update today and yesterday. Older missing dates remain visible but locked.</p><Link href="/student/progress">View complete progress report →</Link></article>
+    <section className="dashboard-kpi-grid dashboard-kpi-five" aria-label="Your 7-day Growth Scores">
+      <DashboardMetric label="Overall Growth" value={`${Math.round(score.overall)}/100`} detail={`Rank #${mine?.rank || "—"}`} icon={Sparkles} tone="purple" />
+      <DashboardMetric label="Sadhana" value={`${Math.round(score.sadhana)}/100`} detail="Morning Routine" icon={Sunrise} tone="green" />
+      <DashboardMetric label="Study" value={`${Math.round(score.study)}/100`} detail="Study & Class" icon={BookOpen} tone="blue" />
+      <DashboardMetric label="Discipline" value={`${Math.round(score.discipline)}/100`} detail="Sleep & Wake" icon={MoonStar} tone="orange" />
+      <DashboardMetric label="Seva" value={`${Math.round(score.seva)}/100`} detail="Service Minutes" icon={HeartHandshake} tone="rose" />
     </section>
-    <section className="panel section-gap"><div className="panel-title"><div><p className="eyebrow">Hostel scoreboard</p><h2>Top 10 students · rolling 7 days</h2></div><span>Your overall rank: #{mine?.rank || "—"}</span></div><CategoryLeaderboard students={report.students} currentStudentId={profile.id} /></section>
+    <section className="dashboard-reference-grid section-gap">
+      <DashboardPanel title="Today’s Sadhana" description="Your daily routine checklist" action={<span className={`status-pill ${todayEntry ? "status-success" : "status-warning"}`}>{todayEntry ? "Submitted" : "Pending"}</span>} className="student-sadhana-panel"><div className="sadhana-list">{tasks.map(([label, value, Icon]) => <div key={label} className="sadhana-row"><Icon size={19} aria-hidden="true" /><span>{label}</span><strong>{value}</strong>{todayEntry ? <CheckCircle2 size={17} className="success-icon" aria-label="Filled" /> : <XCircle size={17} className="danger-icon" aria-label="Missing" />}</div>)}</div><Link className="button button-secondary full-width" href={`/student/entry?date=${today}`}>{todayEntry ? "View or Edit Full Entry" : "Complete Today’s Entry"}</Link></DashboardPanel>
+      <DashboardPanel title="Overall Progress" description="Rolling 7-day score" className="score-panel"><ScoreOverview scores={score} /></DashboardPanel>
+      <DashboardPanel title="Submission Calendar" description={`${mine?.submittedDays ?? 0}/${mine?.eligibleDays ?? 0} entries submitted`}><AttendanceHeatmap days={heatmapDays} /><p className="field-hint dashboard-hint">You can update today and yesterday. Older missing dates remain visible but locked.</p></DashboardPanel>
+      <DashboardPanel title="Overall Score Trend" description="Last 7 eligible days" action={<Link href="/student/progress">Full Progress</Link>} className="dashboard-wide-panel"><OverallGrowthChart data={(mine?.daily ?? []).map((day) => ({ ...day, date: day.date.slice(5) }))} /></DashboardPanel>
+      <DashboardPanel title="Recent Activities" description="Your latest Daily Entries"><ActivityList items={activityItems} emptyText="Your submitted Daily Entries will appear here." /></DashboardPanel>
+    </section>
+    <DashboardPanel title="Hostel Scoreboard" description="Top 10 Students · Rolling 7 Days" className="section-gap" action={<span>Your Rank: #{mine?.rank || "—"}</span>}><CategoryLeaderboard students={report.students} currentStudentId={profile.id} /></DashboardPanel>
     <p className="security-note section-gap">Scores cover {displayDate(start)} through {displayDate(today)} and automatically roll forward each day.</p>
   </main>;
 }

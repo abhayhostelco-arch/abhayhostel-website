@@ -46,7 +46,7 @@ export function GitaAttendanceForm({
         </div>
       </fieldset>)}
     </div>
-    {state.message ? <p className={`form-message ${state.status === "success" ? "form-success" : "form-error"}`} role="status">{state.message}</p> : null}
+    {state.message ? <p className={`form-message ${state.status === "success" ? "form-success" : "form-error"}`} role={state.status === "success" ? "status" : "alert"}>{state.message}</p> : null}
     <div className="attendance-save-bar"><span>{completed === students.length ? "Sheet complete and ready to save." : "Every student must have one status."}</span><button className="button" type="submit" disabled={pending || completed !== students.length}><CheckCheck size={18} aria-hidden="true" /> {pending ? "Saving…" : "Save Complete Sheet"}</button></div>
   </form>;
 }

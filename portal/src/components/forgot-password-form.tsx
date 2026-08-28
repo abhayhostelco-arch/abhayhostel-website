@@ -32,7 +32,7 @@ export function ForgotPasswordForm({ invalidRecoveryLink }: ForgotPasswordFormPr
       <form action={action} className="form-stack">
         <div className="field">
           <label htmlFor="email">Email address</label>
-          <input id="email" name="email" type="email" maxLength={254} required />
+          <input id="email" name="email" type="email" maxLength={254} autoComplete="email" spellCheck={false} required />
         </div>
         <TurnstileWidget
           onReadyChange={handleCaptchaReady}

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Download } from "lucide-react";
+import { BookOpen, CalendarCheck2, CheckCircle2, Clock3, Download, Sparkles } from "lucide-react";
+import { DashboardMetric } from "@/components/dashboard-ui";
 import { CategoryGrowthChart, OverallGrowthChart } from "@/components/growth-score-charts";
 import { GrowthLeaderboard } from "@/components/growth-leaderboard";
 import { GrowthScoreCards } from "@/components/growth-score-cards";
@@ -52,13 +53,13 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <button className="button button-secondary" type="submit">Update Report</button>
         </form>
       </section>
-      <section className="metric-grid section-gap-small">
-        <article className="metric-card"><span>Completion</span><strong>{completion}%</strong></article>
-        <article className="metric-card"><span>Gita class attendance</span><strong>{attendance}%</strong></article>
-        <article className="metric-card"><span>Average sleep</span><strong>{formatMinutes(average(entries.map((entry) => sleepDurationMinutes(entry.sleep_time, entry.wake_time))))}</strong></article>
-        <article className="metric-card"><span>Average study</span><strong>{formatMinutes(average(entries.map((entry) => entry.study_minutes)))}</strong></article>
-        <article className="metric-card"><span>Total study</span><strong>{formatMinutes(totalStudy)}</strong></article>
-        <article className="metric-card"><span>Total chanting</span><strong>{totalRounds === null ? "—" : `${totalRounds} rounds`}</strong></article>
+      <section className="dashboard-kpi-grid section-gap-small" aria-label="Report summary">
+        <DashboardMetric label="Completion" value={`${completion}%`} detail={`${range}-Day Range`} icon={CheckCircle2} tone="green" />
+        <DashboardMetric label="Gita Attendance" value={`${attendance}%`} detail="Reported Classes" icon={CalendarCheck2} tone="blue" />
+        <DashboardMetric label="Average Sleep" value={formatMinutes(average(entries.map((entry) => sleepDurationMinutes(entry.sleep_time, entry.wake_time))))} detail="Per Entry" icon={Clock3} tone="purple" />
+        <DashboardMetric label="Average Study" value={formatMinutes(average(entries.map((entry) => entry.study_minutes)))} detail="Per Entry" icon={BookOpen} tone="orange" />
+        <DashboardMetric label="Total Study" value={formatMinutes(totalStudy)} detail="Selected Range" icon={Sparkles} tone="rose" />
+        <DashboardMetric label="Total Chanting" value={totalRounds === null ? "—" : `${totalRounds}`} detail={totalRounds === null ? "No Data" : "Rounds"} icon={Sparkles} tone="gold" />
       </section>
       <section className="panel section-gap"><div className="panel-title"><h2>Growth Score</h2><span>Missing entries score zero</span></div><GrowthScoreCards scores={selectedGrowth} /></section>
       <section className="content-grid"><article className="panel"><div className="panel-title"><h2>Overall score trend</h2></div><OverallGrowthChart data={growthChartData} /></article><article className="panel"><div className="panel-title"><h2>Category comparison</h2></div><CategoryGrowthChart scores={selectedGrowth} /></article></section>

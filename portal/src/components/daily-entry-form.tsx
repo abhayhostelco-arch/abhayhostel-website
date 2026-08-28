@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Save } from "lucide-react";
 import { saveDailyEntryAction } from "@/app/actions/daily-entry";
 import type { DailyEntry } from "@/lib/types";
@@ -25,18 +25,27 @@ export function DailyEntryForm({
     initialActionState,
   );
   const successDialogRef = useRef<HTMLDialogElement>(null);
+  const [dirty, setDirty] = useState(false);
   const hours = entry ? Math.floor(entry.study_minutes / 60) : 0;
   const minutes = entry ? entry.study_minutes % 60 : 0;
 
   useEffect(() => {
     if (state.status === "success" && !successDialogRef.current?.open) {
+      setDirty(false);
       successDialogRef.current?.showModal();
     }
   }, [state]);
 
+  useEffect(() => {
+    if (!dirty || pending) return;
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => { event.preventDefault(); };
+    window.addEventListener("beforeunload", warnBeforeLeaving);
+    return () => window.removeEventListener("beforeunload", warnBeforeLeaving);
+  }, [dirty, pending]);
+
   return (
     <>
-      <form action={action} className="split-form">
+      <form action={action} className="split-form" onChange={() => setDirty(true)}>
       {studentId ? <input type="hidden" name="studentId" value={studentId} /> : null}
       <div className="field">
         <label htmlFor="entryDate">Wake-up date</label>

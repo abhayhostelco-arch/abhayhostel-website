@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { LogOut } from "lucide-react";
-import { logoutAction } from "@/app/actions/auth";
+import { AccountMenu } from "@/components/account-menu";
 import { Brand } from "@/components/brand";
 import { RoleBadge } from "@/components/role-badge";
 import type { Profile } from "@/lib/types";
@@ -11,6 +10,7 @@ import { getAvatarSignedUrl } from "@/lib/data";
 
 export async function PortalShell({ profile, children }: { profile: Profile; children: ReactNode }) {
   const avatarUrl = await getAvatarSignedUrl(profile.avatar_path);
+  const firstName = profile.full_name.split(/\s+/).filter(Boolean)[0] ?? profile.full_name;
   const profileHref = profile.role === "student" ? "/student/settings" : profile.role === "admin" ? "/mentor/profile" : "/admin/profile";
   const shared: PortalLink[] = [
     { href: "/resources", label: "Resources", icon: "resources", group: "Operations" },
@@ -50,13 +50,18 @@ export async function PortalShell({ profile, children }: { profile: Profile; chi
     <aside className="sidebar">
       <Link className="sidebar-brand" href="/" aria-label="Portal home"><Brand /></Link>
       <PortalNavigation links={links} />
+      <aside className="sidebar-inspiration" aria-label="Today’s inspiration">
+        <span>Today’s Inspiration</span>
+        <blockquote>“Yoga is the journey of the self, through the self, to the self.”</blockquote>
+        <small>Bhagavad Gita</small>
+      </aside>
       <Link className="sidebar-identity" href={profileHref} aria-label="Open profile settings"><ProfileAvatar name={profile.full_name} src={avatarUrl} /><div><strong title={profile.full_name}>{profile.full_name}</strong><span className="sidebar-email" title={profile.email}>{profile.email}</span><RoleBadge role={profile.role} /></div></Link>
     </aside>
     <div className="portal-main">
       <header className="portal-topbar">
         <div className="mobile-brand"><Brand /></div>
-        <div className="topbar-context"><span>Abhay Hostel</span><strong>Operations Portal</strong></div>
-        <details className="account-menu"><summary><ProfileAvatar name={profile.full_name} src={avatarUrl} /><span className="account-menu-copy"><strong>{profile.full_name}</strong><small title={profile.email}>{profile.email}</small></span></summary><div className="account-menu-popover"><Link className="account-profile-link" href={profileHref} aria-label="Open profile settings"><strong>{profile.full_name}</strong><span className="account-menu-email">{profile.email}</span><RoleBadge role={profile.role} /><small>Open profile settings →</small></Link><form action={logoutAction}><button type="submit"><LogOut size={16} aria-hidden="true" /> Sign Out</button></form></div></details>
+        <div className="topbar-context"><strong>Hare Krishna, {firstName}</strong><span>{profile.role === "super_admin" ? "Administration Workspace" : profile.role === "admin" ? "Mentor Workspace" : "Student Workspace"}</span></div>
+        <AccountMenu profile={profile} profileHref={profileHref} avatarUrl={avatarUrl} />
       </header>
       <div id="main-content" tabIndex={-1}>{children}</div>
       <MobilePortalNavigation links={links} profile={profile} />

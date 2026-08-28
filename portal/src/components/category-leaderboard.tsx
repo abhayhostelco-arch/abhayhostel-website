@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import type { StudentGrowthReport } from "@/lib/growth-score";
 import { leaderboardPlacement, type LeaderboardCategory } from "@/lib/leaderboard";
 
@@ -11,12 +11,19 @@ const categories: Array<{ id: LeaderboardCategory; label: string }> = [
 
 export function CategoryLeaderboard({ students, currentStudentId }: { students: StudentGrowthReport[]; currentStudentId?: string }) {
   const [category, setCategory] = useState<LeaderboardCategory>("overall");
+  const tabsetId = useId();
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const { leaders, current } = leaderboardPlacement(students, category, currentStudentId);
+  function selectTab(index: number) {
+    const next = (index + categories.length) % categories.length;
+    setCategory(categories[next].id);
+    tabRefs.current[next]?.focus();
+  }
   return <div>
     <div className="leaderboard-tabs" role="tablist" aria-label="Leaderboard category">
-      {categories.map((item) => <button key={item.id} type="button" role="tab" aria-selected={category === item.id} onClick={() => setCategory(item.id)}>{item.label}</button>)}
+      {categories.map((item, index) => <button ref={(element) => { tabRefs.current[index] = element; }} id={`${tabsetId}-${item.id}-tab`} key={item.id} type="button" role="tab" aria-selected={category === item.id} aria-controls={`${tabsetId}-panel`} tabIndex={category === item.id ? 0 : -1} onKeyDown={(event) => { if (event.key === "ArrowRight") { event.preventDefault(); selectTab(index + 1); } else if (event.key === "ArrowLeft") { event.preventDefault(); selectTab(index - 1); } else if (event.key === "Home") { event.preventDefault(); selectTab(0); } else if (event.key === "End") { event.preventDefault(); selectTab(categories.length - 1); } }} onClick={() => setCategory(item.id)}>{item.label}</button>)}
     </div>
-    <div className="leaderboard-chart" role="tabpanel" aria-label={`${categories.find((item) => item.id === category)?.label} top 10`}>
+    <div id={`${tabsetId}-panel`} className="leaderboard-chart" role="tabpanel" aria-labelledby={`${tabsetId}-${category}-tab`}>
       {leaders.map((student) => <div className={`leaderboard-bar-row ${student.studentId === currentStudentId ? "is-current" : ""}`} key={student.studentId}>
         <strong className="leaderboard-rank">#{student.categoryRank}</strong>
         <span className="leaderboard-name" title={student.studentName}>{student.studentName}{student.studentId === currentStudentId ? " (You)" : ""}</span>
