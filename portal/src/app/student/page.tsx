@@ -3,12 +3,12 @@ import Link from "next/link";
 import { BookOpen, BookOpenCheck, CheckCircle2, ClipboardCheck, Clock3, HeartHandshake, MoonStar, Sparkles, Sunrise, XCircle } from "lucide-react";
 import { CategoryLeaderboard } from "@/components/category-leaderboard";
 import { ActivityList, AttendanceHeatmap, DashboardMetric, DashboardPanel, ScoreOverview, type ActivityItem } from "@/components/dashboard-ui";
-import { OverallGrowthChart } from "@/components/growth-score-charts";
+import { WeeklyCategoryChart } from "@/components/growth-score-charts";
 import { requireProfile } from "@/lib/auth";
 import { formatMinutes, sleepDurationMinutes } from "@/lib/analytics";
 import { daysAgoInIndia, displayDate, todayInIndia } from "@/lib/date";
-import { getEntries, getScoreSettings, getStudentLeaderboardSource } from "@/lib/data";
-import { buildGrowthReport } from "@/lib/growth-score";
+import { getEntries, getLeaveRequests, getScoreSettings, getStudentLeaderboardSource } from "@/lib/data";
+import { buildGrowthReport, buildWeeklyCategorySeries } from "@/lib/growth-score";
 
 export const metadata: Metadata = { title: "Student dashboard" };
 
@@ -16,8 +16,8 @@ export default async function StudentDashboard() {
   const profile = await requireProfile(["student"]);
   const today = todayInIndia();
   const start = daysAgoInIndia(6);
-  const [entries, settings, source] = await Promise.all([
-    getEntries({ startDate: start, studentId: profile.id }), getScoreSettings(), getStudentLeaderboardSource(start),
+  const [entries, settings, source, leaves] = await Promise.all([
+    getEntries({ startDate: start, studentId: profile.id }), getScoreSettings(), getStudentLeaderboardSource(start), getLeaveRequests({ studentId: profile.id }),
   ]);
   const report = buildGrowthReport(source.students, source.entries, settings, 7);
   const mine = report.students.find((student) => student.studentId === profile.id);
@@ -62,8 +62,9 @@ export default async function StudentDashboard() {
       <DashboardPanel title="Today’s Sadhana" description="Your daily routine checklist" action={<span className={`status-pill ${todayEntry ? "status-success" : "status-warning"}`}>{todayEntry ? "Submitted" : "Pending"}</span>} className="student-sadhana-panel"><div className="sadhana-list">{tasks.map(([label, value, Icon]) => <div key={label} className="sadhana-row"><Icon size={19} aria-hidden="true" /><span>{label}</span><strong>{value}</strong>{todayEntry ? <CheckCircle2 size={17} className="success-icon" aria-label="Filled" /> : <XCircle size={17} className="danger-icon" aria-label="Missing" />}</div>)}</div><Link className="button button-secondary full-width" href={`/student/entry?date=${today}`}>{todayEntry ? "View or Edit Full Entry" : "Complete Today’s Entry"}</Link></DashboardPanel>
       <DashboardPanel title="Overall Progress" description="Rolling 7-day score" className="score-panel"><ScoreOverview scores={score} /></DashboardPanel>
       <DashboardPanel title="Submission Calendar" description={`${mine?.submittedDays ?? 0}/${mine?.eligibleDays ?? 0} entries submitted`}><AttendanceHeatmap days={heatmapDays} /><p className="field-hint dashboard-hint">You can update today and yesterday. Older missing dates remain visible but locked.</p></DashboardPanel>
-      <DashboardPanel title="Overall Score Trend" description="Last 7 eligible days" action={<Link href="/student/progress">Full Progress</Link>} className="dashboard-wide-panel"><OverallGrowthChart data={(mine?.daily ?? []).map((day) => ({ ...day, date: day.date.slice(5) }))} /></DashboardPanel>
+      <DashboardPanel title="Weekly Progress" description="Last 7 eligible days by category" action={<Link href="/student/progress">Full Progress</Link>} className="dashboard-wide-panel"><WeeklyCategoryChart data={buildWeeklyCategorySeries(report, profile.id)} /></DashboardPanel>
       <DashboardPanel title="Recent Activities" description="Your latest Daily Entries"><ActivityList items={activityItems} emptyText="Your submitted Daily Entries will appear here." /></DashboardPanel>
+      <DashboardPanel title="My Home Leave" description="Applications and approvals" action={<Link href="/student/leave">Open Leave Portal</Link>} className="dashboard-full-panel"><div className="student-mini-stats"><span><b>{leaves.requests.filter((request) => request.status === "pending").length}</b>Pending</span><span><b>{leaves.requests.filter((request) => request.status === "approved").length}</b>Approved</span><span><b>{leaves.requests.filter((request) => request.status === "rejected").length}</b>Rejected</span></div>{!leaves.available ? <p className="field-hint">Available after the leave migration.</p> : null}</DashboardPanel>
     </section>
     <DashboardPanel title="Hostel Scoreboard" description="Top 10 Students · Rolling 7 Days" className="section-gap" action={<span>Your Rank: #{mine?.rank || "—"}</span>}><CategoryLeaderboard students={report.students} currentStudentId={profile.id} /></DashboardPanel>
     <p className="security-note section-gap">Scores cover {displayDate(start)} through {displayDate(today)} and automatically roll forward each day.</p>

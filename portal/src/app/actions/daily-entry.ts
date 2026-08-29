@@ -7,14 +7,15 @@ import { sleepDurationMinutes } from "@/lib/analytics";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionState } from "@/lib/types";
-import { dailyEntrySchema, flattenErrors } from "@/lib/validation";
+import { dailyEntrySchema, flattenErrors, staffDailyEntrySchema } from "@/lib/validation";
+import { isMissingSchemaError } from "@/lib/schema-compat";
 
 export async function saveDailyEntryAction(
   _previous: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
   const profile = await requireProfile(["super_admin", "admin", "student"]);
-  const parsed = dailyEntrySchema.safeParse({
+  const entryInput = {
     entryDate: formData.get("entryDate"),
     sleepTime: formData.get("sleepTime"),
     wakeTime: formData.get("wakeTime"),
@@ -22,17 +23,22 @@ export async function saveDailyEntryAction(
     studyMinutes: formData.get("studyMinutes"),
     chantingRounds: formData.get("chantingRounds"),
     gitaClassStatus: formData.get("gitaClassStatus"),
-    morningAratiAttended: formData.get("morningAratiAttended") === "on",
+    morningAratiStatus: formData.get("morningAratiStatus"),
+    mahaMantraPath: formData.get("mahaMantraPath") ?? "",
     eveningReadingMinutes: formData.get("eveningReadingMinutes"),
     libraryAttended: formData.get("libraryAttended") === "on",
     sevaMinutes: formData.get("sevaMinutes"),
     note: formData.get("note") ?? "",
-  });
+  };
+  const parsed = (profile.role === "student" ? dailyEntrySchema : staffDailyEntrySchema).safeParse(entryInput);
   if (!parsed.success) {
     return { status: "error", fieldErrors: flattenErrors(parsed.error) };
   }
   const targetStudentId = profile.role === "student" ? profile.id : String(formData.get("studentId") ?? "");
   if (!targetStudentId || !/^[0-9a-f-]{36}$/i.test(targetStudentId)) return { status: "error", message: "Choose a valid student." };
+  if (parsed.data.mahaMantraPath && !parsed.data.mahaMantraPath.startsWith(`${targetStudentId}/${parsed.data.entryDate}/`)) {
+    return { status: "error", message: "Choose evidence uploaded by this student." };
+  }
   const validDate = profile.role === "student" ? isWithinStudentEntryWindow(parsed.data.entryDate) : isWithinEntryWindow(parsed.data.entryDate);
   if (!validDate) {
     return { status: "error", message: profile.role === "student" ? "Students can edit today or yesterday only." : "Choose a date within the last 90 days." };
@@ -48,8 +54,7 @@ export async function saveDailyEntryAction(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("daily_entries").upsert(
-    {
+  const legacyPayload = {
       student_id: targetStudentId,
       entry_date: parsed.data.entryDate,
       sleep_time: parsed.data.sleepTime,
@@ -57,14 +62,19 @@ export async function saveDailyEntryAction(
       study_minutes: studyMinutes,
       chanting_rounds: parsed.data.chantingRounds,
       gita_class_status: parsed.data.gitaClassStatus,
-      morning_arati_attended: parsed.data.morningAratiAttended,
+      morning_arati_attended: parsed.data.morningAratiStatus === "present",
       evening_reading_minutes: parsed.data.eveningReadingMinutes,
       library_attended: parsed.data.libraryAttended,
       seva_minutes: parsed.data.sevaMinutes,
       note: parsed.data.note,
-    },
+  };
+  let { error } = await supabase.from("daily_entries").upsert(
+    { ...legacyPayload, morning_arati_status: parsed.data.morningAratiStatus, maha_mantra_path: parsed.data.morningAratiStatus === "present" ? null : (parsed.data.mahaMantraPath ?? null) },
     { onConflict: "student_id,entry_date" },
   );
+  if (isMissingSchemaError(error) && parsed.data.morningAratiStatus === "present") {
+    ({ error } = await supabase.from("daily_entries").upsert(legacyPayload, { onConflict: "student_id,entry_date" }));
+  }
   if (error) {
     console.error("Daily entry upsert failed", {
       code: error.code,
@@ -81,6 +91,8 @@ export async function saveDailyEntryAction(
 
   revalidatePath("/student");
   revalidatePath("/student/progress");
+  revalidatePath("/admin/daily-tracking");
+  revalidatePath("/mentor/daily-tracking");
   revalidatePath(`/admin/students/${targetStudentId}`);
   revalidatePath(`/mentor/students/${targetStudentId}`);
   return { status: "success", message: "Daily entry saved." };

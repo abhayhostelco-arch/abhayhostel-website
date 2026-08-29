@@ -57,7 +57,17 @@ export const targetAccountSchema = z.object({
 
 export const resetAccountSchema = z.object({ targetId: z.uuid() });
 
-export const dailyEntrySchema = z.object({
+export const morningAratiStatusSchema = z.enum(["present", "late", "absent"]);
+export const mahaMantraUploadSchema = z.object({
+  type: z.enum(["image/jpeg", "image/png", "image/webp"]),
+  size: z.number().int().positive().max(5 * 1024 * 1024),
+});
+export const mahaMantraPathSchema = z.string().max(260).regex(
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/\d{4}-\d{2}-\d{2}\/maha-mantra-[0-9]+\.(?:jpg|jpeg|png|webp)$/i,
+  "Invalid Maha Mantra evidence path.",
+);
+
+const dailyEntryBaseSchema = z.object({
   entryDate: z.iso.date(),
   sleepTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   wakeTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
@@ -68,12 +78,48 @@ export const dailyEntrySchema = z.object({
     z.coerce.number().int().min(0).max(108),
   ),
   gitaClassStatus: z.enum(["present", "absent", "no_class"]),
-  morningAratiAttended: z.boolean(),
+  morningAratiStatus: morningAratiStatusSchema.default("present"),
+  mahaMantraPath: z.preprocess((value) => value === "" || value === null ? undefined : value, mahaMantraPathSchema.optional()),
   eveningReadingMinutes: z.coerce.number().int().min(0).max(360),
   libraryAttended: z.boolean(),
   sevaMinutes: z.coerce.number().int().min(0).max(720),
   note: z.string().trim().max(500).transform((value) => value || null),
 });
+
+export const staffDailyEntrySchema = dailyEntryBaseSchema;
+export const dailyEntrySchema = dailyEntryBaseSchema.superRefine((value, context) => {
+  if (value.morningAratiStatus !== "present" && !value.mahaMantraPath) {
+    context.addIssue({ code: "custom", path: ["mahaMantraPath"], message: "Upload a Maha Mantra picture when late or absent." });
+  }
+});
+
+export const leaveAttachmentUploadSchema = z.object({
+  type: z.enum(["image/jpeg", "image/png", "application/pdf"]),
+  size: z.number().int().positive().max(5 * 1024 * 1024),
+});
+export const leaveAttachmentUploadRequestSchema = leaveAttachmentUploadSchema.extend({ requestId: z.uuid() });
+export const leaveAttachmentPathSchema = z.string().max(260).regex(
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/application-[0-9]+\.(?:jpg|jpeg|png|pdf)$/i,
+  "Invalid leave application path.",
+);
+const leaveRequestDetailsBaseSchema = z.object({
+  startDate: z.string().refine((value) => z.iso.date().safeParse(value).success, "Choose a start date."),
+  endDate: z.string().refine((value) => z.iso.date().safeParse(value).success, "Choose an end date."),
+  reason: z.string().trim().min(3, "Explain why you need to go home.").max(1000),
+});
+const datesInOrder = (value: { startDate: string; endDate: string }) => value.endDate >= value.startDate;
+export const leaveRequestDetailsSchema = leaveRequestDetailsBaseSchema.refine(datesInOrder, { message: "End date must be on or after start date.", path: ["endDate"] });
+export const leaveRequestSchema = leaveRequestDetailsBaseSchema.extend({
+  requestId: z.uuid(),
+  attachmentPath: z.preprocess((value) => value === "" || value === null ? undefined : value, leaveAttachmentPathSchema.optional()),
+}).refine(datesInOrder, { message: "End date must be on or after start date.", path: ["endDate"] });
+export const leaveDecisionSchema = z.object({
+  requestId: z.uuid(), decision: z.enum(["approved", "rejected"]),
+  decisionNote: z.string().trim().max(1000).transform((value) => value || null),
+}).superRefine((value, context) => {
+  if (value.decision === "rejected" && !value.decisionNote) context.addIssue({ code: "custom", path: ["decisionNote"], message: "Give a reason when rejecting leave." });
+});
+export const leaveWithdrawalSchema = z.object({ requestId: z.uuid() });
 
 export const scoreSettingsSchema = z
   .object({

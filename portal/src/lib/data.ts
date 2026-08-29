@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { AlertSettings, AttendanceEvent, AttendancePerson, AttendanceRecord, DailyEntry, GitaClassAttendance, Profile, ScoreSettings, SharedResource, WeeklyProgram, WeeklyProgramEntry } from "@/lib/types";
+import type { AlertSettings, AttendanceEvent, AttendancePerson, AttendanceRecord, DailyEntry, GitaClassAttendance, LeaveRequest, LeaveStatus, Profile, ScoreSettings, SharedResource, WeeklyProgram, WeeklyProgramEntry } from "@/lib/types";
 import { isMissingSchemaError } from "@/lib/schema-compat";
 
 export async function getProfiles(role?: "admin" | "student", activeOnly = false): Promise<Profile[]> {
@@ -161,6 +161,13 @@ export async function getAvatarSignedUrl(avatarPath?: string | null): Promise<st
   return data.signedUrl;
 }
 
+export async function getPrivateUploadSignedUrl(bucket: "maha-mantra-evidence" | "leave-applications", path?: string | null): Promise<string | null> {
+  if (!path) return null;
+  const { data, error } = await createAdminClient().storage.from(bucket).createSignedUrl(path, 60 * 60);
+  if (error) return null;
+  return data.signedUrl;
+}
+
 export async function getGitaAttendance(
   startDate: string,
   studentIds: string[],
@@ -176,4 +183,25 @@ export async function getGitaAttendance(
   if (isMissingSchemaError(error)) return { available: false, records: [] };
   if (error) throw new Error("Unable to load official Gita attendance.");
   return { available: true, records: (data ?? []) as GitaClassAttendance[] };
+}
+
+export async function getLeaveRequests(options: {
+  month?: string;
+  studentId?: string;
+  status?: LeaveStatus;
+} = {}): Promise<{ available: boolean; requests: LeaveRequest[] }> {
+  const supabase = await createClient();
+  let query = supabase.from("leave_requests").select("*").order("created_at", { ascending: false }).limit(1000);
+  if (options.month) {
+    const [year, month] = options.month.split("-").map(Number);
+    const start = `${options.month}-01`;
+    const end = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+    query = query.lte("start_date", end).gte("end_date", start);
+  }
+  if (options.studentId) query = query.eq("student_id", options.studentId);
+  if (options.status) query = query.eq("status", options.status);
+  const { data, error } = await query;
+  if (isMissingSchemaError(error)) return { available: false, requests: [] };
+  if (error) throw new Error("Unable to load leave requests.");
+  return { available: true, requests: (data ?? []) as LeaveRequest[] };
 }

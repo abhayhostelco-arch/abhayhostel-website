@@ -56,7 +56,7 @@ function weightedOverall(scores: Omit<GrowthBreakdown, "overall">, settings: Sco
 export function scoreDailyEntry(entry: DailyEntry, settings: ScoreSettings): GrowthBreakdown {
   const sadhanaParts = [
     { weight: 37.5, score: progress(entry.chanting_rounds ?? 0, settings.chanting_target_rounds), included: true },
-    { weight: 25, score: entry.morning_arati_attended ? 100 : 0, included: true },
+    { weight: 25, score: (entry.morning_arati_status ?? (entry.morning_arati_attended ? "present" : "absent")) === "present" ? 100 : 0, included: true },
     { weight: 25, score: entry.gita_class_status === "present" ? 100 : 0, included: entry.gita_class_status !== "no_class" },
     { weight: 12.5, score: progress(entry.evening_reading_minutes, settings.evening_reading_target_minutes), included: true },
   ];
@@ -165,4 +165,23 @@ export function roundedScores(scores: GrowthBreakdown): GrowthBreakdown {
     seva: Math.round(scores.seva),
     overall: Math.round(scores.overall),
   };
+}
+
+export type WeeklyCategoryPoint = Omit<GrowthBreakdown, "overall"> & { date: string };
+
+export function buildWeeklyCategorySeries(report: GrowthReport, studentId?: string): WeeklyCategoryPoint[] {
+  const selected = studentId ? report.students.find((student) => student.studentId === studentId) : undefined;
+  return report.dates.slice(-7).map((date) => {
+    const values = selected
+      ? selected.daily.filter((day) => day.date === date)
+      : report.students.map((student) => student.daily.find((day) => day.date === date)).filter((day): day is DailyGrowthScore => Boolean(day));
+    const divisor = Math.max(values.length, 1);
+    return {
+      date: date.slice(5),
+      sadhana: Math.round(values.reduce((sum, day) => sum + day.sadhana, 0) / divisor),
+      study: Math.round(values.reduce((sum, day) => sum + day.study, 0) / divisor),
+      discipline: Math.round(values.reduce((sum, day) => sum + day.discipline, 0) / divisor),
+      seva: Math.round(values.reduce((sum, day) => sum + day.seva, 0) / divisor),
+    };
+  });
 }

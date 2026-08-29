@@ -2,10 +2,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { AccountMenu } from "@/components/account-menu";
 import { Brand } from "@/components/brand";
-import { RoleBadge } from "@/components/role-badge";
 import type { Profile } from "@/lib/types";
 import { MobilePortalNavigation, PortalNavigation, type PortalLink } from "@/components/portal-navigation";
-import { ProfileAvatar } from "@/components/profile-avatar";
 import { getAvatarSignedUrl } from "@/lib/data";
 
 export async function PortalShell({ profile, children }: { profile: Profile; children: ReactNode }) {
@@ -24,7 +22,9 @@ export async function PortalShell({ profile, children }: { profile: Profile; chi
         { href: "/admin/administrators", label: "Mentors", icon: "mentors", group: "People" },
         ...shared,
         { href: "/admin/gita-attendance", label: "Gita Attendance", icon: "attendance", group: "Operations" },
+        { href: "/admin/leaves", label: "Home Leave", icon: "leave", group: "Operations" },
         { href: "/admin/reports", label: "Reports", icon: "reports", group: "Insights" },
+        { href: "/admin/daily-tracking", label: "Daily Tracking", icon: "reports", group: "Insights" },
         { href: "/admin/settings", label: "Settings", icon: "settings", group: "System" },
       ]
     : profile.role === "admin"
@@ -33,11 +33,14 @@ export async function PortalShell({ profile, children }: { profile: Profile; chi
           { href: "/mentor/students", label: "My Students", icon: "students", group: "People" },
           ...shared,
           { href: "/mentor/gita-attendance", label: "Gita Attendance", icon: "attendance", group: "Operations" },
+          { href: "/mentor/leaves", label: "Home Leave", icon: "leave", group: "Operations" },
           { href: "/mentor/reports", label: "Reports", icon: "reports", group: "Insights" },
+          { href: "/mentor/daily-tracking", label: "Daily Tracking", icon: "reports", group: "Insights" },
         ]
       : [
           { href: "/student", label: "Dashboard", icon: "dashboard", group: "Overview" },
           { href: "/student/entry", label: "Daily Entry", icon: "entry", group: "Overview" },
+          { href: "/student/leave", label: "Home Leave", icon: "leave", group: "Operations" },
           { href: "/student/progress", label: "My Progress", icon: "reports", group: "Insights" },
           { href: "/student/settings", label: "Profile Settings", icon: "settings", group: "System" },
           ...shared,
@@ -53,7 +56,6 @@ export async function PortalShell({ profile, children }: { profile: Profile; chi
         <blockquote>“Yoga is the journey of the self, through the self, to the self.”</blockquote>
         <small>Bhagavad Gita</small>
       </aside>
-      <Link className="sidebar-identity" href={profileHref} aria-label="Open profile settings"><ProfileAvatar name={profile.full_name} src={avatarUrl} /><div><strong title={profile.full_name}>{profile.full_name}</strong><span className="sidebar-email" title={profile.email}>{profile.email}</span><RoleBadge role={profile.role} /></div></Link>
     </aside>
     <div className="portal-main">
       <header className="portal-topbar">

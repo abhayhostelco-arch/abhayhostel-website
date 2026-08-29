@@ -1,5 +1,7 @@
 export type AppRole = "super_admin" | "admin" | "student";
 export type GitaClassStatus = "present" | "absent" | "no_class";
+export type MorningAratiStatus = "present" | "late" | "absent";
+export type LeaveStatus = "pending" | "approved" | "rejected" | "withdrawn";
 
 export interface Profile {
   id: string;
@@ -39,10 +41,27 @@ export interface DailyEntry {
   chanting_rounds: number | null;
   gita_class_status: GitaClassStatus;
   morning_arati_attended: boolean;
+  morning_arati_status?: MorningAratiStatus;
+  maha_mantra_path?: string | null;
   evening_reading_minutes: number;
   library_attended: boolean;
   seva_minutes: number;
   note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LeaveRequest {
+  id: string;
+  student_id: string;
+  start_date: string;
+  end_date: string;
+  reason: string;
+  attachment_path: string | null;
+  status: LeaveStatus;
+  decision_note: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
   created_at: string;
   updated_at: string;
 }

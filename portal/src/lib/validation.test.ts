@@ -15,6 +15,7 @@ import {
   avatarPathSchema,
   avatarUploadSchema,
 } from "@/lib/validation";
+import * as validation from "@/lib/validation";
 
 describe("password validation", () => {
   it("requires length and every character group", () => {
@@ -41,6 +42,28 @@ describe("profile enhancements", () => {
 });
 
 describe("daily entry validation", () => {
+  it("accepts Morning Arati statuses and requires an owned Maha Mantra path when needed", () => {
+    const base = {
+      entryDate: "2026-08-22", sleepTime: "22:30", wakeTime: "06:00", studyHours: 4,
+      studyMinutes: 0, chantingRounds: 16, gitaClassStatus: "present",
+      eveningReadingMinutes: 30, libraryAttended: true, sevaMinutes: 60, note: "",
+    };
+    const ownedPath = "00000000-0000-4000-8000-000000000001/2026-08-22/maha-mantra-1724800000000.png";
+    expect(dailyEntrySchema.safeParse({ ...base, morningAratiStatus: "present", mahaMantraPath: "" }).success).toBe(true);
+    expect(dailyEntrySchema.safeParse({ ...base, morningAratiStatus: "late", mahaMantraPath: ownedPath }).success).toBe(true);
+    expect(dailyEntrySchema.safeParse({ ...base, morningAratiStatus: "absent", mahaMantraPath: "" }).success).toBe(false);
+    expect(dailyEntrySchema.safeParse({ ...base, morningAratiStatus: "excused", mahaMantraPath: ownedPath }).success).toBe(false);
+  });
+
+  it("allows an authorized staff correction without historical evidence", () => {
+    const schema = (validation as unknown as { staffDailyEntrySchema: { safeParse: (value: unknown) => { success: boolean } } }).staffDailyEntrySchema;
+    expect(schema.safeParse({
+      entryDate: "2026-08-22", sleepTime: "22:30", wakeTime: "06:00", studyHours: 4,
+      studyMinutes: 0, chantingRounds: 16, gitaClassStatus: "present", morningAratiStatus: "absent",
+      mahaMantraPath: "", eveningReadingMinutes: 30, libraryAttended: true, sevaMinutes: 60, note: "",
+    }).success).toBe(true);
+  });
+
   it("accepts allowlisted values and trims an empty note", () => {
     const result = dailyEntrySchema.parse({
       entryDate: "2026-08-22",
@@ -102,6 +125,26 @@ describe("daily entry validation", () => {
     };
     expect(dailyEntrySchema.safeParse({ ...base, eveningReadingMinutes: -1 }).success).toBe(false);
     expect(dailyEntrySchema.safeParse({ ...base, sevaMinutes: 721 }).success).toBe(false);
+  });
+});
+
+describe("leave request validation", () => {
+  it("accepts an ordered date range and normalizes an empty attachment", () => {
+    const schema = (validation as unknown as { leaveRequestSchema: { safeParse: (value: unknown) => { success: boolean } } }).leaveRequestSchema;
+    expect(schema.safeParse({ requestId: "00000000-0000-4000-8000-000000000010", startDate: "2026-09-01", endDate: "2026-09-03", reason: "Family visit", attachmentPath: "" }).success).toBe(true);
+  });
+
+  it("rejects reversed dates, short reasons, and malformed attachments", () => {
+    const schema = (validation as unknown as { leaveRequestSchema: { safeParse: (value: unknown) => { success: boolean } } }).leaveRequestSchema;
+    expect(schema.safeParse({ requestId: "00000000-0000-4000-8000-000000000010", startDate: "2026-09-03", endDate: "2026-09-01", reason: "x", attachmentPath: "../secret.pdf" }).success).toBe(false);
+  });
+
+  it("requires a reason when Admin rejects a request", () => {
+    const schema = (validation as unknown as { leaveDecisionSchema: { safeParse: (value: unknown) => { success: boolean } } }).leaveDecisionSchema;
+    const requestId = "00000000-0000-4000-8000-000000000010";
+    expect(schema.safeParse({ requestId, decision: "approved", decisionNote: "" }).success).toBe(true);
+    expect(schema.safeParse({ requestId, decision: "rejected", decisionNote: "" }).success).toBe(false);
+    expect(schema.safeParse({ requestId, decision: "withdrawn", decisionNote: "Changed plans" }).success).toBe(false);
   });
 });
 

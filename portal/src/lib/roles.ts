@@ -11,3 +11,7 @@ export function homeForRole(role: AppRole): string {
   if (role === "admin") return "/mentor";
   return "/student";
 }
+
+export function studentProfilePath(role: "super_admin" | "admin", studentId: string): string {
+  return role === "super_admin" ? `/admin/students/${studentId}` : `/mentor/students/${studentId}`;
+}

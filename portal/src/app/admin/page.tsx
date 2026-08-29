@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BookOpen, CalendarCheck2, CheckCircle2, ClipboardCheck, ShieldCheck, Sparkles, UserRoundX, Users } from "lucide-react";
 import { AdminDashboardFilters } from "@/components/admin-dashboard-filters";
-import { CategoryLeaderboard } from "@/components/category-leaderboard";
 import { ActivityList, AttendanceHeatmap, DashboardMetric, DashboardPanel, ScoreOverview, StudentSummaryStrip, type ActivityItem } from "@/components/dashboard-ui";
+import { StudentPerformanceTable } from "@/components/student-performance-table";
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { TrendChart } from "@/components/trend-chart";
 import { average, formatMinutes } from "@/lib/analytics";
 import { requireProfile } from "@/lib/auth";
-import { daysAgoInIndia, displayDate, todayInIndia } from "@/lib/date";
-import { getAvatarSignedUrl, getEntries, getGitaAttendance, getProfiles, getScoreSettings, getStudentLeaderboardSource } from "@/lib/data";
+import { approvedLeaveDaysInMonth, daysAgoInIndia, displayDate, todayInIndia } from "@/lib/date";
+import { getAvatarSignedUrl, getEntries, getGitaAttendance, getLeaveRequests, getProfiles, getScoreSettings, getStudentLeaderboardSource } from "@/lib/data";
 import { buildGrowthReport } from "@/lib/growth-score";
 import { summarizeAttendanceDays } from "@/lib/gita-attendance";
 
@@ -66,6 +66,9 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
     })),
   ].slice(0, 5);
   const highlightedStudent = scopedReport[0];
+  const leaveResult = await getLeaveRequests({ month: endDate.slice(0, 7) });
+  const homeDays = new Map(scopedStudents.map((student) => [student.id, approvedLeaveDaysInMonth(leaveResult.requests.filter((request) => request.student_id === student.id), endDate.slice(0, 7))]));
+  const studentsAway = new Set(leaveResult.requests.filter((request) => request.status === "approved" && request.start_date <= endDate && request.end_date >= endDate).map((request) => request.student_id)).size;
   return <main className="page-container">
     <header className="page-heading dashboard-heading"><div><p className="eyebrow">Overview · {rangeLabel}</p><h1>Hare Krishna 🙏</h1><p>Monitor attendance, student routines, and overall growth for the selected period.</p></div><div className="heading-actions"><AdminDashboardFilters initialRange={rangeSelection} initialStartDate={start} initialEndDate={endDate} earliestDate={daysAgoInIndia(89)} today={today} initialMentorId={allowedMentor} mentors={mentors.map((mentor) => ({ id: mentor.id, fullName: mentor.full_name }))} /></div></header>
     <section className="dashboard-kpi-grid" aria-label="Today’s summary">
@@ -85,8 +88,9 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
       <DashboardPanel title="Students Present" description={`${range}-day range ending ${displayDate(endDate)}; unrecorded dates remain gaps`} action={<Link href={`/admin/gita-attendance?date=${endDate}`}>Record Attendance</Link>} className="dashboard-wide-panel">{attendance.available ? <TrendChart data={chartData} mode="attendance" /> : <div className="empty-state unavailable-state"><strong>Attendance Analytics Unavailable</strong><p>Apply the supplied migration to enable the official register.</p></div>}</DashboardPanel>
       <DashboardPanel title="Recent Activities" description="Today’s submitted Daily Entries"><ActivityList items={activityItems} /></DashboardPanel>
       <DashboardPanel title="Mentor Workload" description="Select a Mentor to view assigned Students" action={<Link href="/admin/administrators">Manage Mentors</Link>} className="dashboard-full-panel workload-panel"><div className="workload-list">{mentors.map((mentor) => { const count = active.filter((student) => student.mentor_id === mentor.id).length; return <Link href={`/admin/students?mentorId=${mentor.id}`} key={mentor.id}><ProfileAvatar name={mentor.full_name} src={mentorAvatars.get(mentor.id)} size={38} /><div className="workload-mentor-copy"><span className="workload-mentor-name" title={mentor.full_name}>{mentor.full_name}</span><strong>{count} {count === 1 ? "Student" : "Students"}</strong></div><ArrowRight size={18} aria-hidden="true" /></Link>; })}{!mentors.length ? <div className="empty-state compact-empty"><strong>No Mentors Yet</strong><p>Create a Mentor before assigning Students.</p></div> : null}</div></DashboardPanel>
+      <DashboardPanel title="Home Leave" description={`Approved leave · ${endDate.slice(0, 7)}`} action={<Link href={`/admin/leaves?month=${endDate.slice(0, 7)}`}>Manage Leave</Link>} className="dashboard-full-panel"><div className="student-mini-stats"><span><b>{leaveResult.requests.filter((request) => request.status === "pending").length}</b>Pending</span><span><b>{studentsAway}</b>Away on Date</span><span><b>{approvedLeaveDaysInMonth(leaveResult.requests, endDate.slice(0, 7))}</b>Home Days</span></div>{!leaveResult.available ? <p className="field-hint">Available after the leave migration.</p> : null}</DashboardPanel>
     </section>
-    <DashboardPanel title="Hostel Scoreboard" description={`Top 10 · ${rangeLabel}`} className="section-gap" action={<Link href={`/admin/reports?range=${reportRange}`}>Open Full Report</Link>}><CategoryLeaderboard students={scopedReport} /></DashboardPanel>
+    <DashboardPanel title="Hostel Scoreboard" description={`Top 10 · ${rangeLabel}`} className="section-gap" action={<Link href={`/admin/daily-tracking?range=${reportRange}`}>Open Daily Tracking</Link>}><StudentPerformanceTable students={scopedReport} homeDays={homeDays} hrefBase="/admin/students" limit={10} /></DashboardPanel>
     <DashboardPanel title="Students Quick Summary" description={`Rolling ${range}-day performance`} className="section-gap student-summary-panel"><StudentSummaryStrip students={scopedReport} hrefBase="/admin/students" /></DashboardPanel>
   </main>;
 }

@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(49);
+select plan(61);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -181,6 +181,52 @@ select is((select count(*)::integer from public.gita_class_attendance), 1, 'Ment
 reset role;
 update public.profiles set is_active = false where id = '00000000-0000-4000-8000-000000000001';
 select is((select count(*)::integer from public.gita_class_attendance where student_id = '00000000-0000-4000-8000-000000000001'), 1, 'Official attendance remains after student deactivation');
+
+update public.profiles set is_active = true where id = '00000000-0000-4000-8000-000000000001';
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', true);
+select lives_ok(
+  $$ insert into public.leave_requests (id, student_id, start_date, end_date, reason) values ('00000000-0000-4000-8000-000000000010', '00000000-0000-4000-8000-000000000001', (now() at time zone 'Asia/Kolkata')::date + 1, (now() at time zone 'Asia/Kolkata')::date + 2, 'Family visit') $$,
+  'Student can submit their own pending leave request'
+);
+select throws_ok(
+  $$ insert into public.leave_requests (id, student_id, start_date, end_date, reason) values ('00000000-0000-4000-8000-000000000012', '00000000-0000-4000-8000-000000000001', (now() at time zone 'Asia/Kolkata')::date + 2, (now() at time zone 'Asia/Kolkata')::date + 3, 'Overlapping visit') $$,
+  '23P01', 'leave request overlaps an existing pending or approved request', 'Overlapping pending leave is rejected'
+);
+select throws_ok(
+  $$ insert into public.leave_requests (id, student_id, start_date, end_date, reason) values ('00000000-0000-4000-8000-000000000011', '00000000-0000-4000-8000-000000000002', (now() at time zone 'Asia/Kolkata')::date + 1, (now() at time zone 'Asia/Kolkata')::date + 2, 'Forged request') $$,
+  '42501', null, 'Student cannot submit leave for another Student'
+);
+select is((select count(*)::integer from public.leave_requests), 1, 'Student sees only their own leave requests');
+select throws_ok(
+  $$ update public.leave_requests set status = 'approved', decided_at = now() where id = '00000000-0000-4000-8000-000000000010' $$,
+  '42501', null, 'Student cannot approve their own leave'
+);
+select lives_ok(
+  $$ insert into storage.objects (bucket_id, name, owner_id) values ('maha-mantra-evidence', '00000000-0000-4000-8000-000000000001/2026-08-29/maha-mantra-1724800000000.png', '00000000-0000-4000-8000-000000000001') $$,
+  'Student can upload evidence in their own folder'
+);
+select throws_ok(
+  $$ insert into storage.objects (bucket_id, name, owner_id) values ('maha-mantra-evidence', '00000000-0000-4000-8000-000000000002/2026-08-29/maha-mantra-1724800000001.png', '00000000-0000-4000-8000-000000000001') $$,
+  '42501', null, 'Student cannot upload evidence for another Student'
+);
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000003', true);
+select is((select count(*)::integer from public.leave_requests), 1, 'Mentor sees assigned-Student leave only');
+select is((select count(*)::integer from storage.objects where bucket_id = 'maha-mantra-evidence'), 1, 'Mentor sees assigned-Student evidence only');
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', true);
+select is((select count(*)::integer from public.leave_requests), 0, 'Student cannot see another Student leave');
+select is((select count(*)::integer from storage.objects where bucket_id = 'maha-mantra-evidence'), 0, 'Student cannot see another Student evidence');
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000004', true);
+select is((select count(*)::integer from public.leave_requests), 1, 'Admin sees all leave requests');
 
 select * from finish();
 rollback;

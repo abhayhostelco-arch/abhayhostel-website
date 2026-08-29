@@ -1069,8 +1069,26 @@ td {
 .attendance-row { display: grid; grid-template-columns: minmax(150px,1fr) 160px minmax(160px,1fr) auto; align-items: center; gap: .55rem; padding: .55rem; background: var(--cream-light); border-radius: 7px; }
 .attendance-row select, .attendance-row input { min-height: 40px; padding: .5rem .65rem; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
 .management-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 1rem; }
-.management-grid h3 { margin-bottom: .65rem; }
+.management-column { min-width: 0; padding: .8rem; background: #f8fafc; border: 1px solid var(--line); border-radius: 9px; }
+.management-column-heading { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; margin-bottom: .45rem; }
+.management-column-heading h3 { margin: 0; }
+.management-column-heading span { color: var(--muted); font-size: .68rem; }
 .management-row { display: flex; align-items: center; justify-content: space-between; gap: .7rem; padding: .55rem 0; border-bottom: 1px solid var(--line); }
+.management-row-copy { min-width: 0; display: grid; gap: .08rem; }
+.management-row-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.management-row-copy small { color: var(--muted); font-size: .65rem; }
+.management-empty { display: grid; justify-items: start; gap: .6rem; padding: .8rem .1rem .25rem; color: var(--muted); font-size: .72rem; }
+.evidence-upload { align-items: start; padding: .8rem; border: 1px dashed var(--line); border-radius: 9px; background: #f8fafc; }
+.evidence-preview { width: min(240px,100%); height: auto; max-height: 180px; object-fit: contain; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.upload-button { width: fit-content; }
+.leave-decision-actions { display: grid; gap: .45rem; min-width: 220px; }
+.leave-decision-actions > .status-pill { justify-self: start; }
+.inline-reject-form { display: grid; grid-template-columns: minmax(130px,1fr) auto; gap: .4rem; }
+.inline-reject-form input { min-height: 36px; padding: .42rem .55rem; border: 1px solid var(--line); border-radius: 7px; }
+.decision-note { display: block; max-width: 260px; margin-top: .35rem; color: var(--muted); }
+.performance-table th:not(:nth-child(2)), .performance-table td:not(:nth-child(2)) { text-align: center; }
+.performance-table td:nth-child(2) { min-width: 150px; font-weight: 700; }
+.performance-table td:nth-child(8) strong { color: var(--green); }
 
 @media (max-width: 1120px) {
   .metric-grid-five { grid-template-columns: repeat(2, minmax(0,1fr)); }
@@ -1175,6 +1193,8 @@ button { color: inherit; }
 .account-menu-copy { min-width: 0; display: grid; line-height: 1.2; }
 .account-menu-copy strong { max-width: 180px; overflow: hidden; font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
 .account-menu-copy small { max-width: 190px; overflow: hidden; color: var(--muted); font-size: .65rem; text-overflow: ellipsis; white-space: nowrap; }
+.account-menu-chevron { flex: 0 0 auto; color: var(--muted); transition: transform 140ms ease; }
+.account-menu[open] .account-menu-chevron { transform: rotate(180deg); }
 .account-menu-popover { position: absolute; top: calc(100% + .6rem); right: 0; width: 260px; padding: .75rem; background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
 .account-menu-popover > div { display: grid; gap: .45rem; padding: .2rem .25rem .75rem; border-bottom: 1px solid var(--line); }
 .account-profile-link { display: grid; gap: .45rem; padding: .2rem .25rem .75rem; border-bottom: 1px solid var(--line); border-radius: 5px; }
@@ -1699,6 +1719,8 @@ button,a { -webkit-tap-highlight-color: rgba(18,59,116,.12); }
 .student-overview-grid-single { grid-template-columns: 1fr; }
 .student-detail-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); margin: 0; }
 .student-growth-summary .growth-score-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+.leave-profile-table { margin-top: .8rem; }
+.leave-profile-table table { min-width: 560px; }
 .directory-profile-link { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: .7rem; padding: .25rem; border-radius: 7px; }
 .directory-profile-link > span:first-child { min-width: 0; display: grid; gap: .12rem; }
 .directory-profile-link strong,.directory-profile-link small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

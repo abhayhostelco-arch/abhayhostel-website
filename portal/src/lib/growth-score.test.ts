@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildGrowthReport, scoreDailyEntry } from "@/lib/growth-score";
+import { buildGrowthReport, buildWeeklyCategorySeries, scoreDailyEntry } from "@/lib/growth-score";
 import type { DailyEntry, Profile, ScoreSettings } from "@/lib/types";
 
 const settings: ScoreSettings = {
@@ -31,6 +31,13 @@ describe("Growth Score", () => {
     expect(scoreDailyEntry(entry("a", { gita_class_status: "no_class" }), settings).sadhana).toBe(100);
   });
 
+  it("does not award Morning Arati credit for a late status", () => {
+    const late = scoreDailyEntry(entry("a", { morning_arati_attended: true, morning_arati_status: "late" }), settings);
+    const present = scoreDailyEntry(entry("a", { morning_arati_attended: false, morning_arati_status: "present" }), settings);
+    expect(late.sadhana).toBe(75);
+    expect(present.sadhana).toBe(100);
+  });
+
   it("applies a linear discipline grace period", () => {
     const result = scoreDailyEntry(entry("a", { wake_time: "07:00:00", sleep_time: "23:30:00" }), settings);
     expect(result.discipline).toBe(50);
@@ -57,5 +64,15 @@ describe("Growth Score", () => {
     const report = buildGrowthReport(students, entries, { ...settings, score_start_date: "2026-08-22" }, 7, new Date("2026-08-22T06:30:00Z"));
     expect(report.students.slice(0, 10)).toHaveLength(10);
     expect(report.students[10].rank).toBeGreaterThanOrEqual(10);
+  });
+
+  it("builds weekly category points for a selected student or the group average", () => {
+    const report = buildGrowthReport(
+      [student("a", "Alpha"), student("b", "Beta")],
+      [entry("a"), entry("b", { chanting_rounds: 0, morning_arati_attended: false, morning_arati_status: "absent", gita_class_status: "absent", evening_reading_minutes: 0 })],
+      { ...settings, score_start_date: "2026-08-22" }, 7, new Date("2026-08-22T06:30:00Z"),
+    );
+    expect(buildWeeklyCategorySeries(report, "a")).toEqual([{ date: "08-22", sadhana: 100, study: 100, discipline: 100, seva: 100 }]);
+    expect(buildWeeklyCategorySeries(report)).toEqual([{ date: "08-22", sadhana: 50, study: 100, discipline: 100, seva: 100 }]);
   });
 });
