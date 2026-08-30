@@ -31,3 +31,13 @@ export function hasPublicSupabaseEnv(): boolean {
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   );
 }
+
+const cleanupWorkerSchema = z.object({
+  CLEANUP_WORKER_SECRET: z.string().min(32),
+});
+
+export function getCleanupWorkerEnv() {
+  const parsed = cleanupWorkerSchema.safeParse(process.env);
+  if (!parsed.success) throw new Error("Cleanup worker is not configured correctly.");
+  return parsed.data;
+}

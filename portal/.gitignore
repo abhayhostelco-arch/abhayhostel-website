@@ -36,7 +36,7 @@ yarn-error.log*
 
 # hosting-provider local metadata
 .vercel
-.netlify
+/.netlify/
 
 # test output
 coverage/

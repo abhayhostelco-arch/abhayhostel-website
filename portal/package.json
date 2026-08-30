@@ -9,9 +9,13 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:db": "supabase test db",
+    "test:cleanup:integration": "tsx scripts/cleanup-integration.ts",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "security:secrets": "node scripts/secret-scan.mjs",
+    "verify:netlify": "netlify functions:build --src netlify/functions --functions .netlify/functions-dist && node scripts/verify-netlify-functions.mjs .netlify/functions-dist",
+    "verify:cleanup": "npm run test:db && npm run test:cleanup:integration && npm run verify:netlify",
     "verify": "npm run lint && npm run typecheck && npm run test && npm run security:secrets && npm run build",
     "bootstrap:super-admin": "tsx --env-file=.env.local scripts/bootstrap-super-admin.ts"
   },
@@ -28,7 +32,9 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@netlify/functions": "6.0.0",
     "@netlify/plugin-nextjs": "^5.15.13",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
@@ -38,6 +44,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.2",
     "jsdom": "^28.1.0",
+    "netlify-cli": "26.2.0",
+    "supabase": "2.116.0",
     "tsx": "^4.23.12",
     "typescript": "^5",
     "vitest": "^4.1.11"

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BookOpen, CalendarCheck2, CheckCircle2, ClipboardCheck, ShieldCheck, Sparkles, UserRoundX, Users } from "lucide-react";
 import { AdminDashboardFilters } from "@/components/admin-dashboard-filters";
+import { AutoCleanupTrigger } from "@/components/auto-cleanup-trigger";
 import { ActivityList, AttendanceHeatmap, DashboardMetric, DashboardPanel, ScoreOverview, StudentSummaryStrip, type ActivityItem } from "@/components/dashboard-ui";
 import { StudentPerformanceTable } from "@/components/student-performance-table";
 import { ProfileAvatar } from "@/components/profile-avatar";
@@ -69,7 +70,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
   const leaveResult = await getLeaveRequests({ month: endDate.slice(0, 7) });
   const homeDays = new Map(scopedStudents.map((student) => [student.id, approvedLeaveDaysInMonth(leaveResult.requests.filter((request) => request.student_id === student.id), endDate.slice(0, 7))]));
   const studentsAway = new Set(leaveResult.requests.filter((request) => request.status === "approved" && request.start_date <= endDate && request.end_date >= endDate).map((request) => request.student_id)).size;
-  return <main className="page-container">
+  return <main className="page-container"><AutoCleanupTrigger />
     <header className="page-heading dashboard-heading"><div><p className="eyebrow">Overview · {rangeLabel}</p><h1>Hare Krishna 🙏</h1><p>Monitor attendance, student routines, and overall growth for the selected period.</p></div><div className="heading-actions"><AdminDashboardFilters initialRange={rangeSelection} initialStartDate={start} initialEndDate={endDate} earliestDate={daysAgoInIndia(89)} today={today} initialMentorId={allowedMentor} mentors={mentors.map((mentor) => ({ id: mentor.id, fullName: mentor.full_name }))} /></div></header>
     <section className="dashboard-kpi-grid" aria-label="Today’s summary">
       <DashboardMetric label="Active Students" value={active.length} detail="Hostel Roster" icon={Users} tone="purple" />

@@ -11,6 +11,16 @@ export function isMissingSchemaError(error: DatabaseError): boolean {
     || text.includes("does not exist");
 }
 
+export function isMissingCleanupSchemaError(error: DatabaseError): boolean {
+  if (!error) return false;
+  const text = `${error.message ?? ""} ${error.details ?? ""}`.toLowerCase();
+  return error.code === "42P01"
+    || error.code === "42703"
+    || error.code === "PGRST202"
+    || text.includes("cleanup_") && text.includes("does not exist")
+    || text.includes("deletion_pending_at") && text.includes("does not exist");
+}
+
 export function isMissingAvatarBucketError(error: DatabaseError): boolean {
   if (!error) return false;
   const text = `${error.message ?? ""} ${error.details ?? ""}`.toLowerCase();
