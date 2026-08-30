@@ -7,6 +7,7 @@ import { ChevronDown, LogOut } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { RoleBadge } from "@/components/role-badge";
+import { ThemeControl } from "@/components/theme-control";
 import type { Profile } from "@/lib/types";
 import { roleLabels } from "@/lib/roles";
 
@@ -43,5 +44,5 @@ export function AccountMenu({ profile, profileHref, avatarUrl }: { profile: Prof
     };
   }, []);
 
-  return <details ref={detailsRef} className="account-menu"><summary><ProfileAvatar name={profile.full_name} src={avatarUrl} /><span className="account-menu-copy"><strong>{profile.full_name}</strong><small>{roleLabels[profile.role]}</small></span><ChevronDown className="account-menu-chevron" size={16} aria-hidden="true" /></summary><div className="account-menu-popover"><Link className="account-profile-link" href={profileHref} aria-label="Open profile settings" onClick={() => closeMenu()}><strong>{profile.full_name}</strong><span className="account-menu-email">{profile.email}</span><RoleBadge role={profile.role} /><small>Open Profile Settings →</small></Link><form action={logoutAction}><button type="submit"><LogOut size={16} aria-hidden="true" /> Sign Out</button></form></div></details>;
+  return <details ref={detailsRef} className="account-menu"><summary><ProfileAvatar name={profile.full_name} src={avatarUrl} /><span className="account-menu-copy"><strong>{profile.full_name}</strong><small>{roleLabels[profile.role]}</small></span><ChevronDown className="account-menu-chevron" size={16} aria-hidden="true" /></summary><div className="account-menu-popover"><Link className="account-profile-link" href={profileHref} aria-label="Open profile settings" onClick={() => closeMenu()}><strong>{profile.full_name}</strong><span className="account-menu-email">{profile.email}</span><RoleBadge role={profile.role} /><small>Open Profile Settings →</small></Link><ThemeControl /><form action={logoutAction}><button type="submit"><LogOut size={16} aria-hidden="true" /> Sign Out</button></form></div></details>;
 }

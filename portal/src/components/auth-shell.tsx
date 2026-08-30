@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Brand } from "@/components/brand";
+import { ThemeControl } from "@/components/theme-control";
 
 export function AuthShell({ children }: { children: ReactNode }) {
   return (
@@ -17,7 +18,10 @@ export function AuthShell({ children }: { children: ReactNode }) {
         </div>
         <p className="auth-footer">Abhay Hostel · Dhanbad</p>
       </section>
-      <section className="auth-panel">{children}</section>
+      <section className="auth-panel">
+        <ThemeControl />
+        {children}
+      </section>
     </main>
   );
 }
