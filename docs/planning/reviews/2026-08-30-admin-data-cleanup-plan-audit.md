@@ -1,6 +1,6 @@
 # Admin Data Cleanup Plan Audit
 
-Independent audit record for `docs/superpowers/plans/2026-08-30-admin-data-cleanup.md`.
+Independent audit record for `docs/planning/plans/2026-08-30-admin-data-cleanup.md`.
 
 ## Initial findings
 

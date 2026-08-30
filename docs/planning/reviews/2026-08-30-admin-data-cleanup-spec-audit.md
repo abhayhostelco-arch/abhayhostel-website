@@ -3,7 +3,7 @@
 ## Review
 
 - Reviewer: independent `/root/spec_audit` agent (`gpt-5.6-sol`, high reasoning)
-- Reviewed: `docs/superpowers/specs/2026-08-30-admin-data-cleanup-design.md`
+- Reviewed: `docs/planning/specs/2026-08-30-admin-data-cleanup-design.md`
 - Initial verdict: not approved
 - Repository mutations by reviewer: none
 

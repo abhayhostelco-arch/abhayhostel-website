@@ -8,7 +8,7 @@
 
 **Tech Stack:** Next.js 16, React 19, TypeScript, CSS custom properties, Vitest, Testing Library, Recharts, Cloudflare Turnstile.
 
-**Spec:** `docs/superpowers/specs/2026-08-30-portal-dark-mode-design.md`
+**Spec:** `docs/planning/specs/2026-08-30-portal-dark-mode-design.md`
 
 ## Global Constraints
 

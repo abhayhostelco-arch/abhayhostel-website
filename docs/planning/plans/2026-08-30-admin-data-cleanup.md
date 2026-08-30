@@ -8,7 +8,7 @@
 
 **Tech Stack:** Next.js 16.3, React 19, TypeScript, Zod 4, Supabase JS 2.112, PostgreSQL/pgTAP, Netlify Background/Scheduled Functions, Vitest/Testing Library.
 
-**Spec:** `docs/superpowers/specs/2026-08-30-admin-data-cleanup-design.md`
+**Spec:** `docs/planning/specs/2026-08-30-admin-data-cleanup-design.md`
 
 ## Global Constraints
 
