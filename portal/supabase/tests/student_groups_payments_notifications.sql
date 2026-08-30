@@ -1,13 +1,14 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(89);
+select plan(135);
 
 select has_column('public', 'profiles', 'student_group', 'profiles expose the canonical student group');
 select has_table('public', 'payment_settings', 'payment settings persist the QR path and instructions');
 select has_table('public', 'student_payments', 'student payments persist monthly payment proofs');
 select has_column('public', 'leave_requests', 'decision_version', 'leave decisions carry a stable version');
 select has_table('public', 'leave_notification_deliveries', 'leave notification delivery state is durable');
+select has_column('public', 'leave_notification_deliveries', 'lease_token', 'each delivery claim has a unique lease token');
 select is(
   (select enum_range(null::public.student_group)::text),
   '{abhay_hostel,krishna_home}',
@@ -35,6 +36,11 @@ select is(
   'r',
   'student payment reviewer history uses ON DELETE RESTRICT'
 );
+select is(
+  (select confdeltype::text from pg_constraint where conname = 'leave_notification_deliveries_leave_request_id_fkey'),
+  'r',
+  'leave notification history uses ON DELETE RESTRICT'
+);
 
 select is(has_table_privilege('authenticated', 'public.student_payments', 'select'), true, 'authenticated users receive payment SELECT');
 select is(has_table_privilege('authenticated', 'public.student_payments', 'insert'), false, 'authenticated users cannot insert payments directly');
@@ -45,6 +51,37 @@ select is(has_table_privilege('authenticated', 'public.payment_settings', 'updat
 select is(has_table_privilege('authenticated', 'public.leave_notification_deliveries', 'select'), true, 'authenticated users receive notification SELECT');
 select is(has_table_privilege('authenticated', 'public.leave_notification_deliveries', 'insert'), false, 'authenticated users cannot insert notifications directly');
 select is(has_column_privilege('authenticated', 'public.profiles', 'student_group', 'update'), false, 'authenticated users cannot change groups directly');
+select is(has_column_privilege('service_role', 'public.profiles', 'student_group', 'update'), false, 'service role cannot bypass the student-group audit RPC');
+select is(has_column_privilege('service_role', 'public.profiles', 'is_active', 'update'), true, 'service role retains unrelated profile maintenance access');
+select is(has_table_privilege('service_role', 'public.payment_settings', 'select'), true, 'service role can read payment settings');
+select is(has_table_privilege('service_role', 'public.payment_settings', 'insert'), false, 'service role cannot insert payment settings directly');
+select is(has_table_privilege('service_role', 'public.payment_settings', 'update'), false, 'service role cannot update payment settings directly');
+select is(has_table_privilege('service_role', 'public.payment_settings', 'delete'), false, 'service role cannot delete payment settings directly');
+select is(has_table_privilege('service_role', 'public.student_payments', 'select'), true, 'service role can read student payments');
+select is(has_table_privilege('service_role', 'public.student_payments', 'insert'), false, 'service role cannot insert student payments directly');
+select is(has_table_privilege('service_role', 'public.student_payments', 'update'), false, 'service role cannot update student payments directly');
+select is(has_table_privilege('service_role', 'public.student_payments', 'delete'), false, 'service role cannot delete student payments directly');
+select is(has_table_privilege('service_role', 'public.leave_notification_deliveries', 'select'), true, 'service role can read notification deliveries');
+select is(has_table_privilege('service_role', 'public.leave_notification_deliveries', 'insert'), false, 'service role cannot insert notification deliveries directly');
+select is(has_table_privilege('service_role', 'public.leave_notification_deliveries', 'update'), false, 'service role cannot update notification deliveries directly');
+select is(has_table_privilege('service_role', 'public.leave_notification_deliveries', 'delete'), false, 'service role cannot delete notification deliveries directly');
+
+select function_privs_are(
+  'public', 'update_student_group', array['uuid', 'uuid', 'student_group'],
+  'authenticated', array[]::text[], 'authenticated users cannot change a student group through the server RPC'
+);
+select function_privs_are(
+  'public', 'update_student_group', array['uuid', 'uuid', 'student_group'],
+  'service_role', array['EXECUTE']::text[], 'service role can change a student group transactionally'
+);
+select function_privs_are(
+  'public', 'update_payment_settings', array['uuid', 'text', 'text'],
+  'authenticated', array[]::text[], 'authenticated users cannot change payment settings through the server RPC'
+);
+select function_privs_are(
+  'public', 'update_payment_settings', array['uuid', 'text', 'text'],
+  'service_role', array['EXECUTE']::text[], 'service role can change payment settings transactionally'
+);
 
 select function_privs_are(
   'public', 'submit_student_payment', array['uuid', 'date', 'bigint', 'date', 'text', 'text'],
@@ -86,6 +123,30 @@ select function_privs_are(
   'public', 'decide_leave_request', array['uuid', 'uuid', 'text', 'text', 'text'],
   'service_role', array['EXECUTE']::text[], 'service role can decide leave transactionally'
 );
+select function_privs_are(
+  'public', 'claim_leave_notification_batch', array['uuid', 'integer', 'integer'],
+  'authenticated', array[]::text[], 'authenticated users cannot claim notification deliveries'
+);
+select function_privs_are(
+  'public', 'claim_leave_notification_batch', array['uuid', 'integer', 'integer'],
+  'service_role', array['EXECUTE']::text[], 'service role can claim notification deliveries'
+);
+select function_privs_are(
+  'public', 'complete_leave_notification_delivery', array['uuid', 'uuid', 'uuid', 'boolean', 'text', 'text'],
+  'authenticated', array[]::text[], 'authenticated users cannot complete notification deliveries'
+);
+select function_privs_are(
+  'public', 'complete_leave_notification_delivery', array['uuid', 'uuid', 'uuid', 'boolean', 'text', 'text'],
+  'service_role', array['EXECUTE']::text[], 'service role can complete notification deliveries'
+);
+select function_privs_are(
+  'public', 'retry_leave_notification', array['uuid', 'uuid'],
+  'authenticated', array[]::text[], 'authenticated users cannot retry notification deliveries'
+);
+select function_privs_are(
+  'public', 'retry_leave_notification', array['uuid', 'uuid'],
+  'service_role', array['EXECUTE']::text[], 'service role can retry notification deliveries'
+);
 
 select policies_are(
   'public', 'student_payments', array['student_payments_select_authorized']::name[],
@@ -109,7 +170,8 @@ insert into auth.users (
   ('10000000-0000-4000-8000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'group-mentor@example.com', '', now(), '{"role":"admin"}', '{"full_name":"Group Mentor","student_group":"krishna_home"}', now(), now()),
   ('10000000-0000-4000-8000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'group-owner@example.com', '', now(), '{"role":"super_admin"}', '{"full_name":"Group Owner","student_group":"krishna_home"}', now(), now()),
   ('10000000-0000-4000-8000-000000000005', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'inactive@example.com', '', now(), '{"role":"student"}', '{"full_name":"Inactive Student","joined_on":"2026-01-01"}', now(), now()),
-  ('10000000-0000-4000-8000-000000000006', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'invalid-address', '', now(), '{"role":"student"}', '{"full_name":"Invalid Email Student","joined_on":"2026-01-01"}', now(), now());
+  ('10000000-0000-4000-8000-000000000006', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'invalid-address', '', now(), '{"role":"student"}', '{"full_name":"Invalid Email Student","joined_on":"2026-01-01"}', now(), now()),
+  ('10000000-0000-4000-8000-000000000007', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'replacement-mentor@example.com', '', now(), '{"role":"admin"}', '{"full_name":"Replacement Mentor"}', now(), now());
 
 update public.profiles
 set mentor_id = '10000000-0000-4000-8000-000000000003'
@@ -168,6 +230,24 @@ insert into public.leave_requests (
 insert into public.audit_events (actor_id, action, target_id, metadata)
 values ('10000000-0000-4000-8000-000000000004', 'account_created', '10000000-0000-4000-8000-000000000001', '{}'::jsonb);
 
+select lives_ok(
+  $$
+    insert into public.audit_events (actor_id, action, target_id, metadata)
+    select null, historical_action, null, '{}'::jsonb
+    from unnest(array[
+      'account_created', 'account_deactivated', 'account_reactivated', 'credential_reset',
+      'settings_updated', 'score_settings_updated', 'report_exported', 'super_admin_bootstrapped',
+      'mentor_assigned', 'entry_corrected', 'resource_created', 'resource_updated',
+      'weekly_program_created', 'weekly_program_closed', 'weekly_program_reopened',
+      'attendance_person_created', 'attendance_event_created', 'attendance_recorded',
+      'leave_approved', 'leave_rejected', 'student_birthdate_updated',
+      'cleanup_settings_updated', 'cleanup_history_completed', 'cleanup_history_partial',
+      'student_deletion_completed', 'student_deletion_partial'
+    ]::text[]) as historical_actions(historical_action)
+  $$,
+  'every historical audit action remains accepted'
+);
+
 create temporary table task1_counts as
 select
   (select count(*) from public.profiles where role = 'student') as student_count,
@@ -187,6 +267,35 @@ select is(
   (select count(*)::integer from public.leave_notification_deliveries where leave_request_id = '10000000-0000-4000-8000-000000000010'),
   0,
   'an existing decided leave receives no retrospective notification'
+);
+
+insert into public.leave_requests (id, student_id, start_date, end_date, reason)
+values (
+  '10000000-0000-4000-8000-000000000013',
+  '10000000-0000-4000-8000-000000000002',
+  current_date + 40,
+  current_date + 41,
+  'Retention constraint fixture'
+);
+insert into public.leave_notification_deliveries (
+  leave_request_id, student_id, decision_version, decision, recipient_email,
+  student_name, leave_start_date, leave_end_date, status, idempotency_key, sent_at
+) values (
+  '10000000-0000-4000-8000-000000000013',
+  '10000000-0000-4000-8000-000000000002',
+  1,
+  'approved',
+  'group-two@example.com',
+  'Krishna Student',
+  current_date + 40,
+  current_date + 41,
+  'sent',
+  'leave-decision:10000000-0000-4000-8000-000000000013:1',
+  now()
+);
+select throws_ok(
+  $$ delete from public.leave_requests where id = '10000000-0000-4000-8000-000000000013' $$,
+  '23503', null, 'notification history restricts deletion of its leave request'
 );
 
 select is(
@@ -388,18 +497,91 @@ select decision_version, id
 from public.leave_notification_deliveries
 where leave_request_id = '10000000-0000-4000-8000-000000000011';
 
+select throws_ok(
+  $$ select public.claim_leave_notification_batch(null, 1, 60) $$,
+  '22023', 'notification worker is required', 'notification claims reject a null worker'
+);
+select throws_ok(
+  $$ select public.claim_leave_notification_batch('10000000-0000-4000-8000-000000000099', null, 60) $$,
+  '22023', 'invalid notification batch size', 'notification claims reject a null batch size'
+);
+select throws_ok(
+  $$ select public.claim_leave_notification_batch('10000000-0000-4000-8000-000000000099', 1, null) $$,
+  '22023', 'invalid notification lease duration', 'notification claims reject a null lease duration'
+);
+
+create temporary table task1_claim_tokens (
+  label text primary key,
+  lease_token uuid not null,
+  claimed_status text not null
+);
+insert into task1_claim_tokens
+select
+  'first',
+  (claim_result -> 0 ->> 'lease_token')::uuid,
+  claim_result -> 0 ->> 'status'
+from (
+  select public.claim_leave_notification_batch(
+    '10000000-0000-4000-8000-000000000099', 1, 60
+  ) as claim_result
+) claimed;
 select is(
-  (public.claim_leave_notification_batch('10000000-0000-4000-8000-000000000099', 1, 60) -> 0 ->> 'status'),
+  (select claimed_status from task1_claim_tokens where label = 'first'),
   'sending',
   'notification delivery can be claimed with a server lease'
+);
+update public.leave_notification_deliveries
+set lease_expires_at = clock_timestamp() - interval '1 second'
+where id = (select id from task1_notification_ids where decision_version = 1);
+insert into task1_claim_tokens
+select
+  'second',
+  (claim_result -> 0 ->> 'lease_token')::uuid,
+  claim_result -> 0 ->> 'status'
+from (
+  select public.claim_leave_notification_batch(
+    '10000000-0000-4000-8000-000000000099', 1, 60
+  ) as claim_result
+) claimed;
+select isnt(
+  (select lease_token from task1_claim_tokens where label = 'first'),
+  (select lease_token from task1_claim_tokens where label = 'second'),
+  'an expired delivery claim receives a new lease token'
+);
+select throws_ok(
+  format(
+    'select public.complete_leave_notification_delivery(%L, %L, %L, true, %L, null)',
+    (select id from task1_notification_ids where decision_version = 1),
+    '10000000-0000-4000-8000-000000000099',
+    (select lease_token from task1_claim_tokens where label = 'first'),
+    'stale-provider-message'
+  ),
+  '40001', 'notification delivery lease is stale', 'an earlier lease token cannot complete a later claim'
 );
 select is(
   public.complete_leave_notification_delivery(
     (select id from task1_notification_ids where decision_version = 1),
-    '10000000-0000-4000-8000-000000000099', true, 'provider-message-1', null
+    '10000000-0000-4000-8000-000000000099',
+    (select lease_token from task1_claim_tokens where label = 'second'),
+    true, 'provider-message-1', null
   ),
   true,
   'a claimed notification can be marked sent'
+);
+select is(
+  (select count(*)::integer from public.audit_events where action = 'leave_notification_claimed'),
+  2,
+  'every successful notification claim writes an audit event'
+);
+select is(
+  (select count(*)::integer from public.audit_events where action = 'leave_notification_lease_expired'),
+  1,
+  'expired notification lease recovery writes an audit event'
+);
+select is(
+  (select count(*)::integer from public.audit_events where action = 'leave_notification_sent'),
+  1,
+  'successful notification completion writes an audit event'
 );
 
 select is(
@@ -419,19 +601,39 @@ insert into task1_notification_ids
 select decision_version, id
 from public.leave_notification_deliveries
 where leave_request_id = '10000000-0000-4000-8000-000000000011' and decision_version = 2;
+insert into task1_claim_tokens
+select
+  'third',
+  (claim_result -> 0 ->> 'lease_token')::uuid,
+  claim_result -> 0 ->> 'status'
+from (
+  select public.claim_leave_notification_batch(
+    '10000000-0000-4000-8000-000000000099', 1, 60
+  ) as claim_result
+) claimed;
 select is(
-  (public.claim_leave_notification_batch('10000000-0000-4000-8000-000000000099', 1, 60) -> 0 ->> 'status'),
+  (select claimed_status from task1_claim_tokens where label = 'third'),
   'sending',
   'the second decision notification can be claimed independently'
 );
 select is(
   public.complete_leave_notification_delivery(
     (select id from task1_notification_ids where decision_version = 2),
-    '10000000-0000-4000-8000-000000000099', false, null, 'resend unavailable'
+    '10000000-0000-4000-8000-000000000099',
+    (select lease_token from task1_claim_tokens where label = 'third'),
+    false, null, 'resend unavailable'
   ),
   true,
   'a claimed notification can be marked failed without rolling back its decision'
 );
+select is(
+  (select count(*)::integer from public.audit_events where action = 'leave_notification_failed'),
+  1,
+  'failed notification completion writes an audit event'
+);
+update public.leave_notification_deliveries
+set attempt_count = 20
+where id = (select id from task1_notification_ids where decision_version = 2);
 select is(
   public.retry_leave_notification(
     '10000000-0000-4000-8000-000000000004',
@@ -440,19 +642,55 @@ select is(
   true,
   'Super Admin can return a failed notification to the retry queue'
 );
+select is(
+  (select attempt_count from public.leave_notification_deliveries where id = (select id from task1_notification_ids where decision_version = 2)),
+  0,
+  'Super Admin retry resets exhausted delivery attempts'
+);
+insert into task1_claim_tokens
+select
+  'fourth',
+  (claim_result -> 0 ->> 'lease_token')::uuid,
+  claim_result -> 0 ->> 'status'
+from (
+  select public.claim_leave_notification_batch(
+    '10000000-0000-4000-8000-000000000099', 1, 60
+  ) as claim_result
+) claimed;
+select is(
+  (select claimed_status from task1_claim_tokens where label = 'fourth'),
+  'sending',
+  'an exhausted failed notification becomes claimable after Super Admin retry'
+);
 
+alter table public.profiles alter column email drop not null;
+update public.profiles
+set email = null
+where id = '10000000-0000-4000-8000-000000000006';
 select is(
   (public.decide_leave_request(
     '10000000-0000-4000-8000-000000000004',
     '10000000-0000-4000-8000-000000000012', 'pending', 'approved', null
   ) ->> 'decision_version')::integer,
   1,
-  'a decision still commits when the student email is invalid'
+  'a decision still commits when the student email is missing'
 );
 select is(
   (select status from public.leave_notification_deliveries where leave_request_id = '10000000-0000-4000-8000-000000000012'),
   'failed',
-  'an invalid recipient creates a failed retryable notification'
+  'a missing recipient creates a failed retryable notification'
+);
+select is(
+  (select recipient_email from public.leave_notification_deliveries where leave_request_id = '10000000-0000-4000-8000-000000000012'),
+  null,
+  'a failed notification durably snapshots the missing recipient'
+);
+
+insert into public.student_payments (
+  student_id, fee_month, amount_paise, payment_date, utr
+) values (
+  '10000000-0000-4000-8000-000000000005', date '2026-09-01', 125050,
+  date '2026-08-30', 'INACTIVESTUDENT01'
 );
 
 set local role authenticated;
@@ -464,7 +702,13 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000002', true);
 select is((select count(*)::integer from public.student_payments), 1, 'second Student sees only their own payment history');
-select is((select count(*)::integer from public.leave_notification_deliveries), 0, 'second Student cannot see another Student notification');
+select is((select count(*)::integer from public.leave_notification_deliveries), 1, 'second Student sees only their own retained notification');
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000005', true);
+select is((select count(*)::integer from public.student_payments), 0, 'inactive Student cannot read their own retained payment');
+select is((select count(*)::integer from public.payment_settings), 0, 'inactive Student cannot read payment settings');
 
 reset role;
 set local role authenticated;
@@ -473,10 +717,25 @@ select is((select count(*)::integer from public.student_payments), 2, 'Mentor se
 select is((select count(*)::integer from public.leave_notification_deliveries), 2, 'Mentor sees notifications only for currently assigned Students');
 
 reset role;
+update public.profiles
+set mentor_id = '10000000-0000-4000-8000-000000000007'
+where id = '10000000-0000-4000-8000-000000000001';
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000003', true);
+select is((select count(*)::integer from public.student_payments), 0, 'previous Mentor loses payment access after reassignment');
+select is((select count(*)::integer from public.leave_notification_deliveries), 0, 'previous Mentor loses notification access after reassignment');
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000007', true);
+select is((select count(*)::integer from public.student_payments), 2, 'replacement Mentor gains payment access after reassignment');
+select is((select count(*)::integer from public.leave_notification_deliveries), 2, 'replacement Mentor gains notification access after reassignment');
+
+reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000004', true);
-select is((select count(*)::integer from public.student_payments), 3, 'Super Admin sees all student payments');
-select is((select count(*)::integer from public.leave_notification_deliveries), 3, 'Super Admin sees all leave notifications');
+select is((select count(*)::integer from public.student_payments), 4, 'Super Admin sees all student payments');
+select is((select count(*)::integer from public.leave_notification_deliveries), 4, 'Super Admin sees all leave notifications');
 
 reset role;
 select cmp_ok(

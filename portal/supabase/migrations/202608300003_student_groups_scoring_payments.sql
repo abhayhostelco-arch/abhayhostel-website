@@ -587,7 +587,7 @@ create table public.leave_notification_deliveries (
   student_id uuid not null,
   decision_version integer not null check (decision_version >= 1),
   decision text not null check (decision in ('approved', 'rejected')),
-  recipient_email text not null check (char_length(recipient_email) <= 254),
+  recipient_email text check (recipient_email is null or char_length(recipient_email) <= 254),
   student_name text not null check (char_length(student_name) between 2 and 120),
   leave_start_date date not null,
   leave_end_date date not null check (leave_end_date >= leave_start_date),
@@ -596,6 +596,7 @@ create table public.leave_notification_deliveries (
   attempt_count integer not null default 0 check (attempt_count between 0 and 20),
   idempotency_key text not null unique check (char_length(idempotency_key) between 1 and 160),
   lease_owner uuid,
+  lease_token uuid,
   lease_expires_at timestamptz,
   provider_message_id text check (provider_message_id is null or char_length(provider_message_id) <= 500),
   last_error text check (last_error is null or char_length(last_error) <= 2000),
@@ -604,14 +605,14 @@ create table public.leave_notification_deliveries (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint leave_notification_deliveries_leave_request_id_fkey
-    foreign key (leave_request_id) references public.leave_requests(id) on delete cascade,
+    foreign key (leave_request_id) references public.leave_requests(id) on delete restrict,
   constraint leave_notification_deliveries_student_id_fkey
     foreign key (student_id) references public.profiles(id) on delete restrict,
   constraint leave_notification_deliveries_request_version_key
     unique (leave_request_id, decision_version),
   constraint leave_notification_deliveries_lease_valid check (
-    (status = 'sending' and lease_owner is not null and lease_expires_at is not null)
-    or (status <> 'sending' and lease_owner is null and lease_expires_at is null)
+    (status = 'sending' and lease_owner is not null and lease_token is not null and lease_expires_at is not null)
+    or (status <> 'sending' and lease_owner is null and lease_token is null and lease_expires_at is null)
   ),
   constraint leave_notification_deliveries_sent_valid check (
     (status = 'sent' and sent_at is not null)
@@ -783,26 +784,55 @@ security definer
 set search_path = ''
 as $$
 declare
+  delivery public.leave_notification_deliveries%rowtype;
   result jsonb;
 begin
-  if p_limit < 1 or p_limit > 50 then
+  if p_worker_uuid is null then
+    raise exception 'notification worker is required' using errcode = '22023';
+  end if;
+  if p_limit is null or p_limit < 1 or p_limit > 50 then
     raise exception 'invalid notification batch size' using errcode = '22023';
   end if;
-  if p_lease_seconds < 30 or p_lease_seconds > 900 then
+  if p_lease_seconds is null or p_lease_seconds < 30 or p_lease_seconds > 900 then
     raise exception 'invalid notification lease duration' using errcode = '22023';
   end if;
 
-  update public.leave_notification_deliveries
-  set
-    status = 'failed',
-    lease_owner = null,
-    lease_expires_at = null,
-    last_error = 'delivery lease expired',
-    next_attempt_at = clock_timestamp()
-  where status = 'sending' and lease_expires_at <= clock_timestamp();
+  for delivery in
+    select *
+    from public.leave_notification_deliveries
+    where status = 'sending' and lease_expires_at <= clock_timestamp()
+    order by created_at, id
+    for update skip locked
+  loop
+    update public.leave_notification_deliveries
+    set
+      status = 'failed',
+      lease_owner = null,
+      lease_token = null,
+      lease_expires_at = null,
+      last_error = 'delivery lease expired',
+      next_attempt_at = clock_timestamp()
+    where id = delivery.id;
 
-  with eligible as (
-    select id
+    insert into public.audit_events (actor_id, action, target_id, metadata)
+    values (
+      null,
+      'leave_notification_lease_expired',
+      delivery.id,
+      jsonb_build_object(
+        'student_id', delivery.student_id,
+        'leave_request_id', delivery.leave_request_id,
+        'decision_version', delivery.decision_version,
+        'worker_id', delivery.lease_owner,
+        'lease_token', delivery.lease_token,
+        'attempt_count', delivery.attempt_count
+      )
+    );
+  end loop;
+
+  result := '[]'::jsonb;
+  for delivery in
+    select *
     from public.leave_notification_deliveries
     where status in ('pending', 'failed')
       and attempt_count < 20
@@ -810,22 +840,36 @@ begin
     order by created_at, id
     limit p_limit
     for update skip locked
-  ), claimed as (
-    update public.leave_notification_deliveries notification
+  loop
+    update public.leave_notification_deliveries
     set
       status = 'sending',
-      attempt_count = notification.attempt_count + 1,
+      attempt_count = delivery.attempt_count + 1,
       lease_owner = p_worker_uuid,
+      lease_token = extensions.gen_random_uuid(),
       lease_expires_at = clock_timestamp() + make_interval(secs => p_lease_seconds),
       last_error = null,
       next_attempt_at = null
-    from eligible
-    where notification.id = eligible.id
-    returning notification.*
-  )
-  select coalesce(jsonb_agg(to_jsonb(claimed) order by claimed.created_at, claimed.id), '[]'::jsonb)
-  into result
-  from claimed;
+    where id = delivery.id
+    returning * into delivery;
+
+    insert into public.audit_events (actor_id, action, target_id, metadata)
+    values (
+      null,
+      'leave_notification_claimed',
+      delivery.id,
+      jsonb_build_object(
+        'student_id', delivery.student_id,
+        'leave_request_id', delivery.leave_request_id,
+        'decision_version', delivery.decision_version,
+        'worker_id', delivery.lease_owner,
+        'lease_token', delivery.lease_token,
+        'attempt_count', delivery.attempt_count
+      )
+    );
+
+    result := result || jsonb_build_array(to_jsonb(delivery));
+  end loop;
 
   return result;
 end;
@@ -834,6 +878,7 @@ $$;
 create function public.complete_leave_notification_delivery(
   p_notification_uuid uuid,
   p_worker_uuid uuid,
+  p_lease_token uuid,
   p_succeeded boolean,
   p_provider_message_id text,
   p_error text
@@ -843,11 +888,14 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  delivery public.leave_notification_deliveries%rowtype;
 begin
   update public.leave_notification_deliveries
   set
     status = case when p_succeeded then 'sent' else 'failed' end,
     lease_owner = null,
+    lease_token = null,
     lease_expires_at = null,
     provider_message_id = case
       when p_succeeded then nullif(btrim(p_provider_message_id), '')
@@ -865,11 +913,30 @@ begin
   where id = p_notification_uuid
     and status = 'sending'
     and lease_owner = p_worker_uuid
-    and lease_expires_at > clock_timestamp();
+    and lease_token = p_lease_token
+    and lease_expires_at > clock_timestamp()
+  returning * into delivery;
 
   if not found then
     raise exception 'notification delivery lease is stale' using errcode = '40001';
   end if;
+
+  insert into public.audit_events (actor_id, action, target_id, metadata)
+  values (
+    null,
+    case when p_succeeded then 'leave_notification_sent' else 'leave_notification_failed' end,
+    delivery.id,
+    jsonb_build_object(
+      'student_id', delivery.student_id,
+      'leave_request_id', delivery.leave_request_id,
+      'decision_version', delivery.decision_version,
+      'worker_id', p_worker_uuid,
+      'lease_token', p_lease_token,
+      'attempt_count', delivery.attempt_count,
+      'provider_message_id', delivery.provider_message_id,
+      'error', delivery.last_error
+    )
+  );
 
   return true;
 end;
@@ -892,7 +959,9 @@ begin
   update public.leave_notification_deliveries
   set
     status = 'pending',
+    attempt_count = 0,
     lease_owner = null,
+    lease_token = null,
     lease_expires_at = null,
     next_attempt_at = clock_timestamp()
   where id = p_notification_uuid and status = 'failed'
@@ -948,6 +1017,16 @@ revoke all on table public.payment_settings, public.student_payments,
   public.leave_notification_deliveries from public, anon, authenticated;
 grant select on table public.payment_settings, public.student_payments,
   public.leave_notification_deliveries to authenticated;
+revoke insert, update, delete on table public.payment_settings, public.student_payments,
+  public.leave_notification_deliveries from service_role;
+grant select on table public.payment_settings, public.student_payments,
+  public.leave_notification_deliveries to service_role;
+revoke update on table public.profiles from service_role;
+grant update (
+  role, full_name, email, phone, academy_label, joined_on, is_active,
+  must_change_password, created_by, mentor_id, birth_date, avatar_path,
+  deletion_pending_at
+) on table public.profiles to service_role;
 
 alter table public.audit_events drop constraint audit_events_action_check;
 alter table public.audit_events add constraint audit_events_action_check check (action in (
@@ -961,6 +1040,8 @@ alter table public.audit_events add constraint audit_events_action_check check (
   'student_deletion_completed', 'student_deletion_partial',
   'student_group_updated', 'payment_settings_updated', 'payment_submitted',
   'payment_resubmitted', 'payment_verified', 'payment_rejected',
+  'leave_notification_claimed', 'leave_notification_lease_expired',
+  'leave_notification_sent', 'leave_notification_failed',
   'leave_notification_retried'
 ));
 
@@ -976,7 +1057,7 @@ revoke execute on function public.update_student_group(uuid, uuid, public.studen
   public.reject_student_payment(uuid, uuid, integer, text),
   public.decide_leave_request(uuid, uuid, text, text, text),
   public.claim_leave_notification_batch(uuid, integer, integer),
-  public.complete_leave_notification_delivery(uuid, uuid, boolean, text, text),
+  public.complete_leave_notification_delivery(uuid, uuid, uuid, boolean, text, text),
   public.retry_leave_notification(uuid, uuid)
   from public, anon, authenticated;
 
@@ -988,7 +1069,7 @@ grant execute on function public.update_student_group(uuid, uuid, public.student
   public.reject_student_payment(uuid, uuid, integer, text),
   public.decide_leave_request(uuid, uuid, text, text, text),
   public.claim_leave_notification_batch(uuid, integer, integer),
-  public.complete_leave_notification_delivery(uuid, uuid, boolean, text, text),
+  public.complete_leave_notification_delivery(uuid, uuid, uuid, boolean, text, text),
   public.retry_leave_notification(uuid, uuid)
   to service_role;
 
