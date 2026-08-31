@@ -6,6 +6,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { BookOpen, CalendarCheck, ChartNoAxesCombined, ClipboardCheck, House, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, Users, X } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { RoleBadge } from "@/components/role-badge";
+import { ThemeControl } from "@/components/theme-control";
 import type { Profile } from "@/lib/types";
 
 const icons = { dashboard: LayoutDashboard, students: Users, mentors: ShieldCheck, reports: ChartNoAxesCombined, entry: ClipboardCheck, resources: BookOpen, weekly: CalendarCheck, attendance: CalendarCheck, leave: House, settings: Settings };
@@ -39,7 +40,7 @@ export function MobilePortalNavigation({ links, profile }: { links: PortalLink[]
     if (!open) return;
     const previousOverflow = document.body.style.overflow;
     const opener = openButtonRef.current;
-    const focusable = () => [...(sheetRef.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? [])];
+    const focusable = () => [...(sheetRef.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input[type="radio"]:not(:disabled), [tabindex]:not([tabindex="-1"])') ?? [])];
     const first = focusable()[0];
     document.body.style.overflow = "hidden";
     first?.focus();
@@ -69,5 +70,5 @@ export function MobilePortalNavigation({ links, profile }: { links: PortalLink[]
       opener?.focus();
     };
   }, [open]);
-  return <><nav className="mobile-nav" aria-label="Primary mobile navigation">{pinned.map((link) => <NavigationLink key={link.href} link={link} pathname={pathname} />)}<button ref={openButtonRef} type="button" aria-label="Open all navigation" aria-expanded={open} aria-controls={sheetId} onClick={() => setOpen(true)}><Menu size={18} aria-hidden="true" /><span>More</span></button></nav>{open ? <div className="mobile-sheet-backdrop" onMouseDown={() => setOpen(false)}><section ref={sheetRef} id={sheetId} className="mobile-sheet" role="dialog" aria-modal="true" aria-labelledby="mobile-menu-title" onMouseDown={(event) => event.stopPropagation()}><header><Link className="mobile-profile-link" href={profileHref} onClick={() => setOpen(false)}><p className="nav-group-label">Signed In As</p><h2 id="mobile-menu-title">{profile.full_name}</h2><p className="mobile-sheet-email">{profile.email}</p><small>Open Profile Settings →</small></Link><button className="icon-button" type="button" aria-label="Close navigation" onClick={() => setOpen(false)}><X size={20} aria-hidden="true" /></button></header><RoleBadge role={profile.role} /><nav className="mobile-sheet-links" aria-label="All portal navigation">{links.map((link) => <NavigationLink key={link.href} link={link} pathname={pathname} onNavigate={() => setOpen(false)} />)}</nav><form action={logoutAction}><button className="button button-secondary mobile-signout" type="submit"><LogOut size={17} aria-hidden="true" /> Sign Out</button></form></section></div> : null}</>;
+  return <><nav className="mobile-nav" aria-label="Primary mobile navigation">{pinned.map((link) => <NavigationLink key={link.href} link={link} pathname={pathname} />)}<button ref={openButtonRef} type="button" aria-label="Open all navigation" aria-expanded={open} aria-controls={sheetId} onClick={() => setOpen(true)}><Menu size={18} aria-hidden="true" /><span>More</span></button></nav>{open ? <div className="mobile-sheet-backdrop" onMouseDown={() => setOpen(false)}><section ref={sheetRef} id={sheetId} className="mobile-sheet" role="dialog" aria-modal="true" aria-labelledby="mobile-menu-title" onMouseDown={(event) => event.stopPropagation()}><header><Link className="mobile-profile-link" href={profileHref} onClick={() => setOpen(false)}><p className="nav-group-label">Signed In As</p><h2 id="mobile-menu-title">{profile.full_name}</h2><p className="mobile-sheet-email">{profile.email}</p><small>Open Profile Settings →</small></Link><button className="icon-button" type="button" aria-label="Close navigation" onClick={() => setOpen(false)}><X size={20} aria-hidden="true" /></button></header><RoleBadge role={profile.role} /><nav className="mobile-sheet-links" aria-label="All portal navigation">{links.map((link) => <NavigationLink key={link.href} link={link} pathname={pathname} onNavigate={() => setOpen(false)} />)}</nav><form action={logoutAction}><button className="button button-secondary mobile-signout" type="submit"><LogOut size={17} aria-hidden="true" /> Sign Out</button></form><ThemeControl /></section></div> : null}</>;
 }
