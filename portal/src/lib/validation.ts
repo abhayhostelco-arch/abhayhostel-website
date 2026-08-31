@@ -38,21 +38,31 @@ const optionalText = (max: number) =>
     .transform((value) => value || null)
     .optional();
 
-export const createAccountSchema = z.object({
-  role: z.enum(["admin", "student"]),
+const accountFields = {
   fullName: z.string().trim().min(2).max(120),
   email: z.email().trim().toLowerCase(),
   phone: optionalText(30),
   academyLabel: optionalText(120),
   joinedOn: z.iso.date().optional(),
   mentorId: z.uuid().optional(),
-});
+};
+
+export const studentGroupSchema = z.enum(["abhay_hostel", "krishna_home"]);
+export const createAccountSchema = z.discriminatedUnion("role", [
+  z.object({ ...accountFields, role: z.literal("admin"), studentGroup: z.undefined().optional() }),
+  z.object({ ...accountFields, role: z.literal("student"), studentGroup: studentGroupSchema }),
+]);
 
 export const assignMentorSchema = z.object({ studentId: z.uuid(), mentorId: z.uuid() });
 
 export const targetAccountSchema = z.object({
   targetId: z.uuid(),
   active: z.enum(["true", "false"]).transform((value) => value === "true"),
+});
+
+export const studentGroupActionSchema = z.object({
+  targetId: z.uuid(),
+  studentGroup: studentGroupSchema,
 });
 
 export const resetAccountSchema = z.object({ targetId: z.uuid() });

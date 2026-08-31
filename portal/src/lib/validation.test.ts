@@ -11,6 +11,7 @@ import {
   reportQuerySchema,
   scoreSettingsSchema,
   targetAccountSchema,
+  studentGroupActionSchema,
   optionalBirthDateSchema,
   avatarPathSchema,
   avatarUploadSchema,
@@ -181,6 +182,29 @@ describe("settings and report input", () => {
 });
 
 describe("account inputs", () => {
+  it("requires an explicit allowlisted group for Student accounts only", () => {
+    const student = {
+      role: "student",
+      fullName: "Student Name",
+      email: "student@example.com",
+      joinedOn: "2026-01-01",
+      mentorId: "00000000-0000-4000-8000-000000000002",
+    };
+
+    expect(createAccountSchema.safeParse(student).success).toBe(false);
+    expect(createAccountSchema.safeParse({ ...student, studentGroup: "abhay_hostel" }).success).toBe(true);
+    expect(createAccountSchema.safeParse({ ...student, studentGroup: "krishna_home" }).success).toBe(true);
+    expect(createAccountSchema.safeParse({ ...student, studentGroup: "other" }).success).toBe(false);
+    expect(createAccountSchema.safeParse({ role: "admin", fullName: "Mentor Name", email: "mentor@example.com" }).success).toBe(true);
+  });
+
+  it("validates the target and group for Student group changes", () => {
+    const input = { targetId: "00000000-0000-4000-8000-000000000001", studentGroup: "krishna_home" };
+    expect(studentGroupActionSchema.safeParse(input).success).toBe(true);
+    expect(studentGroupActionSchema.safeParse({ ...input, studentGroup: "other" }).success).toBe(false);
+    expect(studentGroupActionSchema.safeParse({ ...input, targetId: "not-a-uuid" }).success).toBe(false);
+  });
+
   it("normalizes account and login fields", () => {
     const account = createAccountSchema.parse({
       role: "student",
@@ -189,6 +213,7 @@ describe("account inputs", () => {
       phone: " ",
       academyLabel: " Class 12 ",
       joinedOn: "2026-01-01",
+      studentGroup: "abhay_hostel",
     });
     expect(account.email).toBe("student@example.com");
     expect(account.phone).toBeNull();

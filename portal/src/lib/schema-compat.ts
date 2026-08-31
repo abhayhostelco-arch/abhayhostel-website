@@ -7,6 +7,7 @@ export function isMissingSchemaError(error: DatabaseError): boolean {
     || error.code === "42703"
     || error.code === "PGRST204"
     || error.code === "PGRST205"
+    || error.code === "PGRST202"
     || text.includes("schema cache")
     || text.includes("does not exist");
 }

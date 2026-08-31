@@ -6,6 +6,7 @@ import { createAccountAction } from "@/app/actions/accounts";
 import { initialActionState } from "@/lib/types";
 import type { Profile } from "@/lib/types";
 import { CopyableTemporaryPassword } from "@/components/copyable-temporary-password";
+import { studentGroupOptions } from "@/lib/student-groups";
 
 export function AccountForm({ role, mentors = [] }: { role: "admin" | "student"; mentors?: Profile[] }) {
   const [state, action, pending] = useActionState(createAccountAction, initialActionState);
@@ -31,6 +32,13 @@ export function AccountForm({ role, mentors = [] }: { role: "admin" | "student";
             <select id="mentorId" name="mentorId" required defaultValue="">
               <option value="" disabled>Choose a Mentor</option>
               {mentors.filter((mentor) => mentor.is_active).map((mentor) => <option key={mentor.id} value={mentor.id}>{mentor.full_name}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="studentGroup">Student group</label>
+            <select id="studentGroup" name="studentGroup" required defaultValue="">
+              <option value="" disabled>Choose a group</option>
+              {studentGroupOptions.map((group) => <option key={group.value} value={group.value}>{group.label}</option>)}
             </select>
           </div>
           <div className="field">

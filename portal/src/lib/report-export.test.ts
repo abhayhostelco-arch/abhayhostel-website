@@ -7,6 +7,7 @@ const student = {
   full_name: "Test Student",
   email: "student@example.com",
   academy_label: "Class 12",
+  student_group: "krishna_home",
 } as Profile;
 
 const settings = { score_start_date: "2026-08-22", chanting_target_rounds: 16, evening_reading_target_minutes: 30, study_target_minutes: 240, wake_target_time: "06:00:00", bedtime_target_time: "22:30:00", seva_target_minutes: 60, discipline_grace_minutes: 120, sadhana_weight: 40, study_weight: 25, discipline_weight: 20, seva_weight: 15 } as ScoreSettings;
@@ -38,6 +39,9 @@ describe("report export rows", () => {
     const roundsColumn = rows[0].indexOf("Chanting rounds");
     expect(rows[1][roundsColumn]).toBe(16);
     expect(rows[0]).toContain("Overall Growth Score");
+    const groupColumn = rows[0].indexOf("Group");
+    expect(groupColumn).toBeGreaterThan(-1);
+    expect(rows[1][groupColumn]).toBe("Krishna Home");
   });
 
   it("exports explicit zero-score rows for missing days", () => {

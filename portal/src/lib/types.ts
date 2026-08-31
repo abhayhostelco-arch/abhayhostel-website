@@ -1,4 +1,5 @@
 export type AppRole = "super_admin" | "admin" | "student";
+export type StudentGroup = "abhay_hostel" | "krishna_home";
 export type GitaClassStatus = "present" | "absent" | "no_class";
 export type MorningAratiStatus = "present" | "late" | "absent";
 export type LeaveStatus = "pending" | "approved" | "rejected" | "withdrawn";
@@ -15,6 +16,7 @@ export interface Profile {
   must_change_password: boolean;
   created_by: string | null;
   mentor_id: string | null;
+  student_group?: StudentGroup | null;
   birth_date?: string | null;
   avatar_path?: string | null;
   created_at: string;

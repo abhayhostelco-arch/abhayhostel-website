@@ -6,15 +6,19 @@ import { todayInIndia } from "@/lib/date";
 import { isMissingSchemaError } from "@/lib/schema-compat";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateTemporaryPassword } from "@/lib/security";
-import type { ActionState, Profile } from "@/lib/types";
+import { studentGroupLabel } from "@/lib/student-groups";
+import type { ActionState, Profile, StudentGroup } from "@/lib/types";
 import {
   createAccountSchema,
   assignMentorSchema,
   flattenErrors,
   optionalBirthDateSchema,
   resetAccountSchema,
+  studentGroupActionSchema,
   targetAccountSchema,
 } from "@/lib/validation";
+
+const studentGroupMigrationMessage = "Student groups are unavailable until the student group migration is applied.";
 
 async function audit(
   actorId: string,
@@ -46,6 +50,19 @@ function canManage(actor: Profile, target: Profile): boolean {
   return actor.role === "admin" && target.role === "student" && target.mentor_id === actor.id;
 }
 
+async function studentGroupColumnAvailable(): Promise<boolean> {
+  const { error } = await createAdminClient().from("profiles").select("student_group").limit(1);
+  return !isMissingSchemaError(error);
+}
+
+async function updateStudentGroup(actorId: string, studentId: string, studentGroup: StudentGroup) {
+  return createAdminClient().rpc("update_student_group", {
+    p_actor_uuid: actorId,
+    p_student_uuid: studentId,
+    p_student_group: studentGroup,
+  });
+}
+
 export async function createAccountAction(
   _previous: ActionState,
   formData: FormData,
@@ -59,12 +76,16 @@ export async function createAccountAction(
     academyLabel: formData.get("academyLabel") ?? "",
     joinedOn: formData.get("joinedOn") || undefined,
     mentorId: formData.get("mentorId") || undefined,
+    studentGroup: formData.get("studentGroup") || undefined,
   });
   if (!parsed.success) {
     return { status: "error", fieldErrors: flattenErrors(parsed.error) };
   }
   if (parsed.data.role === "student" && !parsed.data.mentorId) {
     return { status: "error", message: "Choose a Mentor for the new student." };
+  }
+  if (parsed.data.role === "student" && !await studentGroupColumnAvailable()) {
+    return { status: "error", message: studentGroupMigrationMessage };
   }
   if (parsed.data.mentorId) {
     const mentor = await getTarget(parsed.data.mentorId);
@@ -81,6 +102,7 @@ export async function createAccountAction(
       academy_label: parsed.data.role === "student" ? parsed.data.academyLabel : null,
       joined_on: parsed.data.role === "student" ? parsed.data.joinedOn : null,
       mentor_id: parsed.data.role === "student" ? parsed.data.mentorId : null,
+      student_group: parsed.data.role === "student" ? parsed.data.studentGroup : null,
     },
   };
   const profileValues = {
@@ -115,6 +137,9 @@ export async function createAccountAction(
         message: `This email belongs to an inactive ${existing.role === "admin" ? "Mentor" : "Student"} account. Reactivate it from the correct directory.`,
       };
     }
+    if (parsed.data.role === "student" && !existing.student_group) {
+      return { status: "error", message: studentGroupMigrationMessage };
+    }
     const { error: authError } = await admin.auth.admin.updateUserById(existing.id, {
       password,
       ban_duration: "none",
@@ -123,6 +148,14 @@ export async function createAccountAction(
     });
     if (authError) {
       return { status: "error", message: "The account exists, but its login could not be reactivated. Try Reactivate from the account directory." };
+    }
+    const oldGroup = existing.student_group;
+    if (parsed.data.role === "student") {
+      const { error: groupError } = await updateStudentGroup(actor.id, existing.id, parsed.data.studentGroup);
+      if (groupError) {
+        await admin.auth.admin.updateUserById(existing.id, { ban_duration: "876000h" });
+        return { status: "error", message: isMissingSchemaError(groupError) ? studentGroupMigrationMessage : "The Student group could not be saved. The account remains inactive." };
+      }
     }
     const { error: profileError } = await admin
       .from("profiles")
@@ -133,7 +166,11 @@ export async function createAccountAction(
       await admin.auth.admin.updateUserById(existing.id, { ban_duration: "876000h" });
       return { status: "error", message: "The login was restored, but its portal profile could not be updated. The account remains inactive." };
     }
-    await audit(actor.id, "account_reactivated", existing.id, { role: parsed.data.role, restored_during_creation: true });
+    await audit(actor.id, "account_reactivated", existing.id, {
+      role: parsed.data.role,
+      restored_during_creation: true,
+      ...(parsed.data.role === "student" && oldGroup ? { old_group: oldGroup, new_group: parsed.data.studentGroup } : {}),
+    });
     revalidatePath("/admin/students");
     revalidatePath("/admin/administrators");
     return {
@@ -173,7 +210,19 @@ export async function createAccountAction(
     return { status: "error", message: "The account could not be initialized." };
   }
 
-  await audit(actor.id, "account_created", data.user.id, { role: parsed.data.role });
+  if (parsed.data.role === "student") {
+    const { error: groupError } = await updateStudentGroup(actor.id, data.user.id, parsed.data.studentGroup);
+    if (groupError) {
+      await admin.from("profiles").update({ is_active: false }).eq("id", data.user.id);
+      await admin.auth.admin.updateUserById(data.user.id, { ban_duration: "876000h" });
+      return { status: "error", message: isMissingSchemaError(groupError) ? studentGroupMigrationMessage : "The Student group could not be initialized." };
+    }
+  }
+
+  await audit(actor.id, "account_created", data.user.id, {
+    role: parsed.data.role,
+    ...(parsed.data.role === "student" ? { student_group: parsed.data.studentGroup } : {}),
+  });
   revalidatePath("/admin/students");
   revalidatePath("/admin/administrators");
   return {
@@ -181,6 +230,74 @@ export async function createAccountAction(
     message: "Account created. Copy the temporary password now; it will not be shown again.",
     temporaryPassword: password,
   };
+}
+
+export async function updateStudentGroupAction(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const actor = await requireProfile(["super_admin"]);
+  const parsed = studentGroupActionSchema.safeParse({
+    targetId: formData.get("targetId"),
+    studentGroup: formData.get("studentGroup"),
+  });
+  if (!parsed.success) return { status: "error", message: "Choose a valid Student group." };
+  const target = await getTarget(parsed.data.targetId);
+  if (!target || target.role !== "student") return { status: "error", message: "This Student cannot be updated." };
+
+  const { error } = await updateStudentGroup(actor.id, target.id, parsed.data.studentGroup);
+  if (isMissingSchemaError(error)) return { status: "error", message: studentGroupMigrationMessage };
+  if (error) return { status: "error", message: "The Student group could not be saved." };
+  revalidatePath("/admin/students");
+  revalidatePath(`/admin/students/${target.id}`);
+  revalidatePath(`/mentor/students/${target.id}`);
+  return { status: "success", message: "Student group saved." };
+}
+
+export async function reactivateStudentAction(
+  _previous: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const actor = await requireProfile(["super_admin", "admin"]);
+  const parsed = studentGroupActionSchema.safeParse({
+    targetId: formData.get("targetId"),
+    studentGroup: formData.get("studentGroup"),
+  });
+  if (!parsed.success) return { status: "error", message: "Choose a valid Student group." };
+  const target = await getTarget(parsed.data.targetId);
+  if (!target || target.role !== "student" || target.is_active || !canManage(actor, target)) {
+    return { status: "error", message: "This Student cannot be reactivated." };
+  }
+  if (!await studentGroupColumnAvailable() || !target.student_group) {
+    return { status: "error", message: studentGroupMigrationMessage };
+  }
+  if (actor.role !== "super_admin" && target.student_group !== parsed.data.studentGroup) {
+    return { status: "error", message: "Only a Super Admin can change a Student group." };
+  }
+
+  const admin = createAdminClient();
+  const { error: authError } = await admin.auth.admin.updateUserById(target.id, { ban_duration: "none" });
+  if (authError) return { status: "error", message: "The Student login could not be reactivated." };
+  if (actor.role === "super_admin") {
+    const { error: groupError } = await updateStudentGroup(actor.id, target.id, parsed.data.studentGroup);
+    if (groupError) {
+      await admin.auth.admin.updateUserById(target.id, { ban_duration: "876000h" });
+      return { status: "error", message: isMissingSchemaError(groupError) ? studentGroupMigrationMessage : "The Student group could not be saved. The account remains inactive." };
+    }
+  }
+  const { error: profileError } = await admin.from("profiles").update({ is_active: true }).eq("id", target.id).eq("role", "student");
+  if (profileError) {
+    await admin.auth.admin.updateUserById(target.id, { ban_duration: "876000h" });
+    return { status: "error", message: "The Student profile could not be reactivated." };
+  }
+  await audit(actor.id, "account_reactivated", target.id, {
+    role: "student",
+    old_group: target.student_group,
+    new_group: parsed.data.studentGroup,
+  });
+  revalidatePath("/admin/students");
+  revalidatePath("/mentor/students");
+  return { status: "success", message: `Student reactivated in ${studentGroupLabel(parsed.data.studentGroup)}.` };
 }
 
 export async function setAccountActiveAction(formData: FormData): Promise<void> {
@@ -192,6 +309,7 @@ export async function setAccountActiveAction(formData: FormData): Promise<void> 
   if (!parsed.success || parsed.data.targetId === actor.id) return;
   const target = await getTarget(parsed.data.targetId);
   if (!target || !canManage(actor, target)) return;
+  if (parsed.data.active && target.role === "student") return;
 
   const admin = createAdminClient();
   if (parsed.data.active) {
