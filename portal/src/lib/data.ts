@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { AlertSettings, AttendanceEvent, AttendancePerson, AttendanceRecord, DailyEntry, GitaClassAttendance, LeaveRequest, LeaveStatus, PaymentSettings, Profile, ScoreSettings, SharedResource, StudentPayment, WeeklyProgram, WeeklyProgramEntry } from "@/lib/types";
+import type { AlertSettings, AttendanceEvent, AttendancePerson, AttendanceRecord, DailyEntry, GitaClassAttendance, LeaveNotificationDelivery, LeaveRequest, LeaveStatus, PaymentSettings, Profile, ScoreSettings, SharedResource, StudentPayment, WeeklyProgram, WeeklyProgramEntry } from "@/lib/types";
 import { isMissingSchemaError } from "@/lib/schema-compat";
 import { startOfIndiaWeek } from "@/lib/date";
 
@@ -226,4 +226,13 @@ export async function getLeaveRequests(options: {
   if (isMissingSchemaError(error)) return { available: false, requests: [] };
   if (error) throw new Error("Unable to load leave requests.");
   return { available: true, requests: (data ?? []) as LeaveRequest[] };
+}
+
+export async function getLeaveNotificationDeliveries(requestIds: string[]): Promise<LeaveNotificationDelivery[]> {
+  if (requestIds.length === 0) return [];
+  const { data, error } = await (await createClient()).from("leave_notification_deliveries")
+    .select("id,leave_request_id,decision_version,status").in("leave_request_id", requestIds).limit(1000);
+  if (isMissingSchemaError(error)) return [];
+  if (error) throw new Error("Unable to load leave notification status.");
+  return (data ?? []) as LeaveNotificationDelivery[];
 }

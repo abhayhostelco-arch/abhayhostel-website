@@ -124,7 +124,7 @@ export const leaveRequestSchema = leaveRequestDetailsBaseSchema.extend({
   attachmentPath: z.preprocess((value) => value === "" || value === null ? undefined : value, leaveAttachmentPathSchema.optional()),
 }).refine(datesInOrder, { message: "End date must be on or after start date.", path: ["endDate"] });
 export const leaveDecisionSchema = z.object({
-  requestId: z.uuid(), decision: z.enum(["approved", "rejected"]),
+  requestId: z.uuid(), expectedStatus: z.enum(["pending", "approved"]), decision: z.enum(["approved", "rejected"]),
   decisionNote: z.string().trim().max(1000).transform((value) => value || null),
 }).superRefine((value, context) => {
   if (value.decision === "rejected" && !value.decisionNote) context.addIssue({ code: "custom", path: ["decisionNote"], message: "Give a reason when rejecting leave." });

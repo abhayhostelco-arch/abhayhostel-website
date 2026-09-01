@@ -65,8 +65,18 @@ export interface LeaveRequest {
   decision_note: string | null;
   decided_by: string | null;
   decided_at: string | null;
+  decision_version?: number;
   created_at: string;
   updated_at: string;
+}
+
+export type LeaveNotificationStatus = "pending" | "sending" | "sent" | "failed";
+
+export interface LeaveNotificationDelivery {
+  id: string;
+  leave_request_id: string;
+  decision_version: number;
+  status: LeaveNotificationStatus;
 }
 
 export interface ScoreSettings {

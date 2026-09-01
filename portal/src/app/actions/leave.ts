@@ -1,9 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { randomUUID } from "node:crypto";
+import { z } from "zod";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getServerEnv } from "@/lib/env";
+import { deliverLeaveNotifications } from "@/lib/leave-notifications";
 import { isMissingSchemaError } from "@/lib/schema-compat";
 import { canWithdrawLeaveRequest } from "@/lib/date";
 import { removeLeaveAttachment } from "@/lib/leave-attachments";
@@ -109,24 +113,48 @@ export async function withdrawLeaveRequestAction(formData: FormData) {
   revalidateLeavePages();
 }
 
-export async function decideLeaveRequestAction(formData: FormData) {
+export async function decideLeaveRequestAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
   const profile = await requireProfile(["super_admin"]);
-  const parsed = leaveDecisionSchema.safeParse({ requestId: formData.get("requestId"), decision: formData.get("decision"), decisionNote: formData.get("decisionNote") ?? "" });
-  if (!parsed.success) return;
+  const parsed = leaveDecisionSchema.safeParse({ requestId: formData.get("requestId"), expectedStatus: formData.get("expectedStatus"), decision: formData.get("decision"), decisionNote: formData.get("decisionNote") ?? "" });
+  if (!parsed.success) return { status: "error", fieldErrors: flattenErrors(parsed.error), message: "Check the leave decision." };
   const admin = createAdminClient();
-  const { data, error } = await admin.from("leave_requests").update({
-    status: parsed.data.decision, decision_note: parsed.data.decisionNote, decided_by: profile.id, decided_at: new Date().toISOString(),
-  }).eq("id", parsed.data.requestId).in("status", ["pending", "approved"]).select("id,student_id,attachment_path").maybeSingle();
-  if (error || !data) return;
-  if (parsed.data.decision === "rejected") {
-    await removeLeaveAttachment({
-      path: data.attachment_path,
+  const { data, error } = await admin.rpc("decide_leave_request", {
+    p_actor_uuid: profile.id, p_request_uuid: parsed.data.requestId, p_expected_status: parsed.data.expectedStatus,
+    p_decision: parsed.data.decision, p_decision_note: parsed.data.decisionNote,
+  });
+  if (error || !data || typeof data !== "object") {
+    if (error?.code === "40001") return { status: "error", message: "This leave request changed before review. Refresh and try again." };
+    return { status: "error", message: "This leave request could not be reviewed." };
+  }
+  const result = data as { changed?: unknown; status?: unknown; notification_id?: unknown };
+  if (result.changed === false) return { status: "success", message: "Decision was already saved; no email was sent." };
+  if (result.changed !== true || typeof result.notification_id !== "string") return { status: "error", message: "This leave request could not be reviewed." };
+  const { data: request } = await admin.from("leave_requests").select("id,student_id,attachment_path").eq("id", parsed.data.requestId).maybeSingle();
+  if (result.status === "rejected") {
+    if (request) await removeLeaveAttachment({
+      path: request.attachment_path,
       removeObject: async (path) => !(await admin.storage.from("leave-applications").remove([path])).error,
-      clearPath: async () => !(await admin.from("leave_requests").update({ attachment_path: null }).eq("id", data.id)).error,
+      clearPath: async () => !(await admin.from("leave_requests").update({ attachment_path: null }).eq("id", request.id)).error,
     });
   }
-  await admin.from("audit_events").insert({ actor_id: profile.id, action: parsed.data.decision === "approved" ? "leave_approved" : "leave_rejected", target_id: data.id, metadata: { student_id: data.student_id } });
+  const outcomes = await deliverLeaveNotifications(admin, randomUUID(), getServerEnv().NEXT_PUBLIC_APP_URL);
+  const outcome = outcomes.find((item) => item.notificationId === result.notification_id);
   revalidateLeavePages();
-  revalidatePath(`/admin/students/${data.student_id}`);
-  revalidatePath(`/mentor/students/${data.student_id}`);
+  if (request?.student_id) {
+    revalidatePath(`/admin/students/${request.student_id}`);
+    revalidatePath(`/mentor/students/${request.student_id}`);
+  }
+  return { status: "success", message: outcome?.status === "sent" ? "Decision saved; email sent" : "Decision saved; email failed" };
+}
+
+export async function retryLeaveNotificationAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
+  const profile = await requireProfile(["super_admin"]);
+  const parsed = z.uuid().safeParse(formData.get("notificationId"));
+  if (!parsed.success) return { status: "error", message: "The email notification could not be retried." };
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("retry_leave_notification", { p_actor_uuid: profile.id, p_notification_uuid: parsed.data });
+  if (error || data !== true) return { status: "error", message: "The email notification could not be retried." };
+  await deliverLeaveNotifications(admin, randomUUID(), getServerEnv().NEXT_PUBLIC_APP_URL);
+  revalidateLeavePages();
+  return { status: "success", message: "Email retry queued." };
 }

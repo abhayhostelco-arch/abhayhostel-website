@@ -143,9 +143,9 @@ describe("leave request validation", () => {
   it("requires a reason when Admin rejects a request", () => {
     const schema = (validation as unknown as { leaveDecisionSchema: { safeParse: (value: unknown) => { success: boolean } } }).leaveDecisionSchema;
     const requestId = "00000000-0000-4000-8000-000000000010";
-    expect(schema.safeParse({ requestId, decision: "approved", decisionNote: "" }).success).toBe(true);
-    expect(schema.safeParse({ requestId, decision: "rejected", decisionNote: "" }).success).toBe(false);
-    expect(schema.safeParse({ requestId, decision: "withdrawn", decisionNote: "Changed plans" }).success).toBe(false);
+    expect(schema.safeParse({ requestId, expectedStatus: "pending", decision: "approved", decisionNote: "" }).success).toBe(true);
+    expect(schema.safeParse({ requestId, expectedStatus: "pending", decision: "rejected", decisionNote: "" }).success).toBe(false);
+    expect(schema.safeParse({ requestId, expectedStatus: "pending", decision: "withdrawn", decisionNote: "Changed plans" }).success).toBe(false);
   });
 });
 
