@@ -95,6 +95,11 @@ describe("student groups, payments, and notifications migration safety", () => {
     expect(body).toContain("'new_group', p_student_group");
     expect(body).toContain("assigned_mentor is distinct from p_actor_uuid");
     expect(body).toContain("previous_group is distinct from p_student_group");
+    expect(body).toContain("if was_active then");
+    expect(body).toContain("student profile is already active in a different group");
+    expect(body).toContain("select * into result from public.profiles where id = p_student_uuid;");
+    expect(body).toContain("return result;");
+    expect(body.indexOf("assigned_mentor is distinct from p_actor_uuid")).toBeLessThan(body.indexOf("if was_active then"));
     expect(normalized).toContain("grant execute on function public.reactivate_student_profile(uuid, uuid, public.student_group, boolean) to service_role;");
   });
 });

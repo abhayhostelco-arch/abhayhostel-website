@@ -20,6 +20,7 @@ import {
 
 const studentGroupMigrationMessage = "Student groups are unavailable until the student group migration is applied.";
 const manualRecoveryMessage = "Automatic account recovery failed. Manually disable the Auth login and portal profile before retrying.";
+const concurrentReactivationMessage = "The Student was reactivated by another request. Refresh before changing the group.";
 
 async function audit(
   actorId: string,
@@ -81,6 +82,17 @@ async function reactivateStudentProfile(
 async function rebanAuth(admin: ReturnType<typeof createAdminClient>, accountId: string): Promise<boolean> {
   const { error } = await admin.auth.admin.updateUserById(accountId, { ban_duration: "876000h" });
   return !error;
+}
+
+async function recoverFailedStudentReactivation(
+  admin: ReturnType<typeof createAdminClient>,
+  accountId: string,
+): Promise<"already_active" | "rebanned" | "recovery_failed"> {
+  const { data, error } = await admin.from("profiles").select("*").eq("id", accountId).maybeSingle();
+  if (error) return "recovery_failed";
+  const current = data as Profile | null;
+  if (current?.role === "student" && current.is_active) return "already_active";
+  return await rebanAuth(admin, accountId) ? "rebanned" : "recovery_failed";
 }
 
 async function quarantineCreatedAccount(admin: ReturnType<typeof createAdminClient>, accountId: string): Promise<boolean> {
@@ -188,7 +200,9 @@ export async function createAccountAction(
     if (parsed.data.role === "student") {
       const { error: reactivationError } = await reactivateStudentProfile(actor.id, existing.id, parsed.data.studentGroup, true);
       if (reactivationError) {
-        if (!await rebanAuth(admin, existing.id)) return { status: "error", message: manualRecoveryMessage };
+        const recovery = await recoverFailedStudentReactivation(admin, existing.id);
+        if (recovery === "already_active") return { status: "error", message: concurrentReactivationMessage };
+        if (recovery === "recovery_failed") return { status: "error", message: manualRecoveryMessage };
         return { status: "error", message: isMissingSchemaError(reactivationError) ? studentGroupMigrationMessage : "The Student could not be reactivated. The login remains disabled." };
       }
     } else {
@@ -311,7 +325,9 @@ export async function reactivateStudentAction(
   if (authError) return { status: "error", message: "The Student login could not be reactivated." };
   const { error: reactivationError } = await reactivateStudentProfile(actor.id, target.id, parsed.data.studentGroup, false);
   if (reactivationError) {
-    if (!await rebanAuth(admin, target.id)) return { status: "error", message: manualRecoveryMessage };
+    const recovery = await recoverFailedStudentReactivation(admin, target.id);
+    if (recovery === "already_active") return { status: "error", message: concurrentReactivationMessage };
+    if (recovery === "recovery_failed") return { status: "error", message: manualRecoveryMessage };
     return { status: "error", message: isMissingSchemaError(reactivationError) ? studentGroupMigrationMessage : "The Student could not be reactivated. The login remains disabled." };
   }
   revalidatePath("/admin/students");

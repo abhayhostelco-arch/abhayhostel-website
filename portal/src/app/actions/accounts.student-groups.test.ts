@@ -250,6 +250,23 @@ describe("Student group account actions", () => {
     expect(mocks.updateUserById).toHaveBeenNthCalledWith(2, student.id, { ban_duration: "876000h" });
   });
 
+  it("does not re-ban Auth when another directory request concurrently activates the Student", async () => {
+    profiles.push({ ...student });
+    mocks.rpc.mockImplementation(async () => {
+      profiles[1].is_active = true;
+      return { data: null, error: { code: "22023", message: "student profile is already active in a different group" } };
+    });
+    const formData = new FormData();
+    formData.set("targetId", student.id);
+    formData.set("studentGroup", "krishna_home");
+
+    const result = await accountActions.reactivateStudentAction({ status: "idle" }, formData);
+
+    expect(result).toEqual({ status: "error", message: "The Student was reactivated by another request. Refresh before changing the group." });
+    expect(mocks.updateUserById).toHaveBeenCalledTimes(1);
+    expect(mocks.updateUserById).toHaveBeenCalledWith(student.id, { ban_duration: "none" });
+  });
+
   it("reports manual recovery when Auth re-ban fails after transactional reactivation failure", async () => {
     profiles.push({ ...student });
     mocks.rpc.mockResolvedValue({ data: null, error: { code: "XX000", message: "transaction failed" } });
@@ -272,6 +289,20 @@ describe("Student group account actions", () => {
 
     expect(result).toEqual({ status: "error", message: "Automatic account recovery failed. Manually disable the Auth login and portal profile before retrying." });
     expect(mocks.rpc).toHaveBeenCalledWith("reactivate_student_profile", expect.objectContaining({ p_restored_during_creation: true }));
+  });
+
+  it("does not re-ban Auth when another creation-restoration request concurrently activates the Student", async () => {
+    profiles.push({ ...student });
+    mocks.rpc.mockImplementation(async () => {
+      profiles[1].is_active = true;
+      return { data: null, error: { code: "22023", message: "student profile is already active in a different group" } };
+    });
+
+    const result = await accountActions.createAccountAction({ status: "idle" }, studentForm("krishna_home", student.email));
+
+    expect(result).toEqual({ status: "error", message: "The Student was reactivated by another request. Refresh before changing the group." });
+    expect(mocks.updateUserById).toHaveBeenCalledTimes(1);
+    expect(mocks.updateUserById).toHaveBeenCalledWith(student.id, expect.objectContaining({ ban_duration: "none" }));
   });
 
   it("checks both quarantine writes after a new-account group RPC failure", async () => {

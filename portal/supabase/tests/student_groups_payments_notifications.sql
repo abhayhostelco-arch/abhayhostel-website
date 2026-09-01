@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(144);
+select plan(147);
 
 select has_column('public', 'profiles', 'student_group', 'profiles expose the canonical student group');
 select has_table('public', 'payment_settings', 'payment settings persist the QR path and instructions');
@@ -354,6 +354,25 @@ select is(
   (select metadata ->> 'new_group' from public.audit_events where action = 'account_reactivated' and target_id = '10000000-0000-4000-8000-000000000005' order by id desc limit 1),
   'krishna_home',
   'reactivation audit captures the new group'
+);
+select is(
+  (public.reactivate_student_profile(
+    '10000000-0000-4000-8000-000000000004',
+    '10000000-0000-4000-8000-000000000005',
+    'krishna_home'::public.student_group,
+    true
+  )).is_active,
+  true,
+  'same-group repeated reactivation is idempotent'
+);
+select is(
+  (select count(*)::integer from public.audit_events where action = 'account_reactivated' and target_id = '10000000-0000-4000-8000-000000000005'),
+  1,
+  'idempotent reactivation does not duplicate its audit event'
+);
+select throws_ok(
+  $$ select public.reactivate_student_profile('10000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000005', 'abhay_hostel', false) $$,
+  '22023', 'student profile is already active in a different group', 'active Student reactivation cannot silently change the stored group'
 );
 
 update public.profiles set is_active = false where id = '10000000-0000-4000-8000-000000000001';

@@ -301,14 +301,18 @@ begin
   if not found then
     raise exception 'student profile not found' using errcode = '22023';
   end if;
-  if was_active then
-    raise exception 'student profile is already active' using errcode = '22023';
-  end if;
   if actor_role = 'admin' and assigned_mentor is distinct from p_actor_uuid then
     raise exception 'reactivation actor is not authorized' using errcode = '42501';
   end if;
   if actor_role = 'admin' and previous_group is distinct from p_student_group then
     raise exception 'only a super admin can change a student group' using errcode = '42501';
+  end if;
+  if was_active then
+    if previous_group is distinct from p_student_group then
+      raise exception 'student profile is already active in a different group' using errcode = '22023';
+    end if;
+    select * into result from public.profiles where id = p_student_uuid;
+    return result;
   end if;
 
   update public.profiles
