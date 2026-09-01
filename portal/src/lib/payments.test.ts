@@ -21,6 +21,28 @@ describe("payment form values", () => {
     expect(payments.inrToPaise("0.01")).toBe(1);
   });
 
+  it("preserves exact safe-boundary paise and rejects a decimal that Number would round", async () => {
+    const payments = await loadPayments();
+    expect(payments).not.toBeNull();
+    if (!payments) return;
+
+    expect(payments.inrToPaise("90071992547409.91")).toBe(Number.MAX_SAFE_INTEGER);
+    expect(() => payments.inrToPaise("90071992547409.93")).toThrow(/safe/i);
+    expect(payments.paymentFormSchema("2026-09-01").safeParse({
+      feeMonth: "2026-08", amount: "90071992547409.93", paymentDate: "2026-09-01", utr: "ABC123", note: "",
+    }).success).toBe(false);
+  });
+
+  it("rejects malformed and nonpositive decimal amounts before conversion", async () => {
+    const payments = await loadPayments();
+    expect(payments).not.toBeNull();
+    if (!payments) return;
+
+    expect(() => payments.inrToPaise("0")).toThrow();
+    expect(() => payments.inrToPaise("-1")).toThrow();
+    expect(() => payments.inrToPaise("1.001")).toThrow();
+  });
+
   it("accepts the date and text boundaries for a student submission", async () => {
     const payments = await loadPayments();
     expect(payments).not.toBeNull();

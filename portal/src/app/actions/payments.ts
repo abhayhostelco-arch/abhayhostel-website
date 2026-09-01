@@ -5,7 +5,7 @@ import { z } from "zod";
 import { requireProfile } from "@/lib/auth";
 import { todayInIndia } from "@/lib/date";
 import { paymentFormSchema, paymentReviewSchema } from "@/lib/payments";
-import { replacePaymentQr } from "@/lib/payment-qr";
+import { isPaymentQrImage, replacePaymentQr } from "@/lib/payment-qr";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionState } from "@/lib/types";
 import { flattenErrors } from "@/lib/validation";
@@ -82,6 +82,7 @@ export async function reviewStudentPaymentAction(_previous: ActionState, formDat
 }
 
 const qrMimeExtensions = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" } as const;
+const qrFilenameExtensions = { "image/jpeg": ["jpg", "jpeg"], "image/png": ["png"], "image/webp": ["webp"] } as const;
 
 export async function updatePaymentSettingsAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
   const profile = await requireProfile(["super_admin"]);
@@ -93,7 +94,8 @@ export async function updatePaymentSettingsAction(_previous: ActionState, formDa
   if (current.error || !current.data) return { status: "error", message: "Payment settings could not be loaded." };
   const candidate = formData.get("qrFile");
   const file = typeof File !== "undefined" && candidate instanceof File && candidate.size > 0 ? candidate : null;
-  if (file && (!(file.type in qrMimeExtensions) || file.size > 2 * 1024 * 1024)) {
+  const extension = file?.name.split(".").pop()?.toLowerCase();
+  if (file && (!(file.type in qrMimeExtensions) || !extension || !qrFilenameExtensions[file.type as keyof typeof qrFilenameExtensions].includes(extension as never) || file.size > 2 * 1024 * 1024 || !await isPaymentQrImage(file))) {
     return { status: "error", message: "Use a JPG, PNG, or WebP image no larger than 2 MB." };
   }
   const save = (qrPath: string | null) => admin.rpc("update_payment_settings", {

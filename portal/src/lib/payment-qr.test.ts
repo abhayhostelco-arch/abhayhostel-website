@@ -10,6 +10,30 @@ async function loadQr() {
 }
 
 describe("payment QR replacement", () => {
+  it("rejects a payload that claims to be an image but has no matching signature", async () => {
+    const qr = await loadQr();
+    expect(qr).not.toBeNull();
+    if (!qr) return;
+    expect(typeof qr.isPaymentQrImage).toBe("function");
+    if (typeof qr.isPaymentQrImage !== "function") return;
+
+    await expect(qr.isPaymentQrImage(new Blob(["not an image"], { type: "image/png" }))).resolves.toBe(false);
+  });
+
+  it("accepts JPEG, PNG, and WebP payloads with matching image signatures", async () => {
+    const qr = await loadQr();
+    expect(qr).not.toBeNull();
+    if (!qr) return;
+    expect(typeof qr.isPaymentQrImage).toBe("function");
+    if (typeof qr.isPaymentQrImage !== "function") return;
+
+    await expect(Promise.all([
+      qr.isPaymentQrImage(new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], { type: "image/jpeg" })),
+      qr.isPaymentQrImage(new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])], { type: "image/png" })),
+      qr.isPaymentQrImage(new Blob([new Uint8Array([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50])], { type: "image/webp" })),
+    ])).resolves.toEqual([true, true, true]);
+  });
+
   it("removes the new object when the audited settings update fails", async () => {
     const qr = await loadQr();
     expect(qr).not.toBeNull();
