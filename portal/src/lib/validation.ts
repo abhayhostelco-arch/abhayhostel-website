@@ -151,6 +151,10 @@ export const scoreSettingsSchema = z
     { message: "Category weights must total 100.", path: ["sadhanaWeight"] },
   );
 
+export const scoreStartDateSchema = z.object({
+  scoreStartDate: z.iso.date(),
+});
+
 export const alertSettingsSchema = z
   .object({
     missedEntryEnabled: z.boolean(),

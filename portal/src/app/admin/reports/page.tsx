@@ -26,8 +26,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const groupStudents = filterStudentsByGroup(activeStudents, group);
   const studentId = groupStudents.some((student) => student.id === requestedStudentId) ? requestedStudentId : undefined;
   const scopedStudents = studentId ? groupStudents.filter((student) => student.id === studentId) : groupStudents;
-  const allEntries = await getEntries({ startDate: daysAgoInIndia(range - 1), studentIds: groupStudents.map((student) => student.id) });
-  const entries = studentId ? allEntries.filter((entry) => entry.student_id === studentId) : allEntries;
+  const start = daysAgoInIndia(range - 1);
+  const allEntries = await getEntries({ startDate: start, studentIds: groupStudents.map((student) => student.id), completeScoringWeeks: true });
+  const entries = allEntries.filter((entry) => entry.entry_date >= start && (!studentId || entry.student_id === studentId));
   const possible = Math.max(scopedStudents.length * range, 1);
   const completion = Math.min(100, Math.round((entries.length / possible) * 100));
   const classes = entries.filter((entry) => entry.gita_class_status !== "no_class");

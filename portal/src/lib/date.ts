@@ -11,6 +11,13 @@ export function daysAgoInIndia(days: number, now = new Date()): string {
   return formatInTimeZone(subDays(now, days), APP_TIME_ZONE, "yyyy-MM-dd");
 }
 
+export function startOfIndiaWeek(date: string): string {
+  const cursor = new Date(`${date}T12:00:00Z`);
+  const daysSinceMonday = (cursor.getUTCDay() + 6) % 7;
+  cursor.setUTCDate(cursor.getUTCDate() - daysSinceMonday);
+  return cursor.toISOString().slice(0, 10);
+}
+
 export function isWithinEntryWindow(date: string, now = new Date()): boolean {
   return date >= daysAgoInIndia(89, now) && date <= todayInIndia(now);
 }

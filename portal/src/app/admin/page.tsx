@@ -35,8 +35,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: P
   const [active, mentors, scoreSettings, source] = await Promise.all([
     getProfiles("student", true), getProfiles("admin", true), getScoreSettings(), getStudentLeaderboardSource(start),
   ]);
-  const sourceEntries = source.entries.filter((entry) => entry.entry_date <= endDate);
-  const report = buildGrowthReport(source.students, sourceEntries, scoreSettings, range, selectedNow);
+  const report = buildGrowthReport(source.students, source.entries, scoreSettings, range, new Date(), endDate);
   const mentorAvatars = new Map(await Promise.all(mentors.map(async (mentor) => [mentor.id, await getAvatarSignedUrl(mentor.avatar_path)] as const)));
   const allowedMentor = mentors.some((mentor) => mentor.id === mentorId) ? mentorId : undefined;
   const poolIds = new Set(active.filter((student) => !allowedMentor || student.mentor_id === allowedMentor).map((student) => student.id));

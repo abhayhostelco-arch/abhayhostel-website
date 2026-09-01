@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AlertSettings, AttendanceEvent, AttendancePerson, AttendanceRecord, DailyEntry, GitaClassAttendance, LeaveRequest, LeaveStatus, Profile, ScoreSettings, SharedResource, WeeklyProgram, WeeklyProgramEntry } from "@/lib/types";
 import { isMissingSchemaError } from "@/lib/schema-compat";
+import { startOfIndiaWeek } from "@/lib/date";
 
 export async function getProfiles(role?: "admin" | "student", activeOnly = false): Promise<Profile[]> {
   const supabase = await createClient();
@@ -18,13 +19,14 @@ export async function getEntries(options: {
   startDate: string;
   studentId?: string;
   studentIds?: string[];
+  completeScoringWeeks?: boolean;
 }): Promise<DailyEntry[]> {
   if (options.studentIds?.length === 0) return [];
   const supabase = await createClient();
   let query = supabase
     .from("daily_entries")
     .select("*")
-    .gte("entry_date", options.startDate)
+    .gte("entry_date", options.completeScoringWeeks ? startOfIndiaWeek(options.startDate) : options.startDate)
     .order("entry_date", { ascending: false })
     .limit(5000);
   if (options.studentId) query = query.eq("student_id", options.studentId);
@@ -73,7 +75,7 @@ export async function getStudentLeaderboardSource(startDate: string): Promise<{ 
   if (profilesResult.error) throw new Error("Unable to load leaderboard data.");
   const studentIds = (profilesResult.data ?? []).map((profile) => profile.id);
   if (studentIds.length === 0) return { students: [], entries: [] };
-  const entriesResult = await admin.from("daily_entries").select("*").in("student_id", studentIds).gte("entry_date", startDate).order("entry_date", { ascending: false }).limit(5000);
+  const entriesResult = await admin.from("daily_entries").select("*").in("student_id", studentIds).gte("entry_date", startOfIndiaWeek(startDate)).order("entry_date", { ascending: false }).limit(5000);
   if (entriesResult.error) throw new Error("Unable to load leaderboard data.");
   return { students: (profilesResult.data ?? []) as Profile[], entries: (entriesResult.data ?? []) as DailyEntry[] };
 }
