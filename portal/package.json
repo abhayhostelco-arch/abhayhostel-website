@@ -41,7 +41,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitest/coverage-v8": "^4.1.11",
-    "eslint": "^9",
+    "eslint": "^10",
     "eslint-config-next": "16.3.2",
     "jsdom": "^28.1.0",
     "netlify-cli": "26.2.0",
