@@ -70,4 +70,20 @@ describe("group scoreboard outputs", () => {
     expect(html).toContain("<h3>Krishna Home</h3>");
     expect(html).not.toContain('class="avatar"');
   });
+
+  it("keeps an empty configured group visible with an explicit empty state", () => {
+    const abhayOnly = mixedStudents.filter((value) => value.studentGroup === "abhay_hostel");
+    const outputs = [
+      renderToStaticMarkup(<GrowthLeaderboard students={abhayOnly} />),
+      renderToStaticMarkup(<CategoryLeaderboard students={abhayOnly} />),
+      renderToStaticMarkup(<StudentPerformanceTable students={abhayOnly} homeDays={new Map()} hrefBase="/admin/students" limit={10} />),
+      renderToStaticMarkup(<StudentSummaryStrip students={abhayOnly} />),
+    ];
+
+    for (const html of outputs) {
+      expect(html).toContain("<h3>Abhay Hostel</h3>");
+      expect(html).toContain("<h3>Krishna Home</h3>");
+      expect(html).toContain("No students in this group.");
+    }
+  });
 });

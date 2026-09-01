@@ -1,14 +1,14 @@
 import { compareGrowthStudents, type StudentGrowthReport } from "@/lib/growth-score";
-import { studentGroupOptions } from "@/lib/student-groups";
+import { isStudentGroup, studentGroupOptions } from "@/lib/student-groups";
 
 export type LeaderboardCategory = "overall" | "sadhana" | "study" | "discipline" | "seva";
-export type RankedGrowthStudent = StudentGrowthReport & { categoryRank: number; categoryScore: number };
+export type RankedGrowthStudent = StudentGrowthReport & { categoryRank: number | null; categoryScore: number };
 
 export function groupGrowthStudents(students: StudentGrowthReport[]) {
   return studentGroupOptions.map((group) => ({
     ...group,
     students: students.filter((student) => student.studentGroup === group.value),
-  })).filter((group) => group.students.length > 0);
+  }));
 }
 
 export function rankByCategory(
@@ -20,9 +20,12 @@ export function rankByCategory(
       - (b.studentGroup === "abhay_hostel" ? 0 : b.studentGroup === "krishna_home" ? 1 : 2)
       || compareGrowthStudents(a, b, a[category], b[category]),
   );
-  let rankedGroup = sorted[0]?.studentGroup;
+  let rankedGroup: StudentGrowthReport["studentGroup"] | undefined;
   let groupRank = 0;
   return sorted.map((student) => {
+    if (!isStudentGroup(student.studentGroup)) {
+      return { ...student, categoryRank: null, categoryScore: Math.round(student[category]) };
+    }
     if (student.studentGroup !== rankedGroup) {
       rankedGroup = student.studentGroup;
       groupRank = 0;

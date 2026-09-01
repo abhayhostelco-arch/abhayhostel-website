@@ -147,13 +147,12 @@ export function StudentSummaryStrip({
   hrefBase?: string;
   currentStudentId?: string;
 }) {
-  if (!students.length) return <div className="empty-state compact-empty"><strong>No Student Summaries</strong><p>Student summaries will appear when scoring begins.</p></div>;
   return (
     <div className="group-scoreboards">{groupGrowthStudents(students).map((group) => <section className="group-scoreboard" key={group.value}><h3>{group.label}</h3><div className="student-summary-strip" role="region" aria-label={`${group.label} student summaries; scroll horizontally to view more`} tabIndex={0}>
-        {group.students.slice(0, 6).map((student) => {
+        {group.students.length ? group.students.slice(0, 6).map((student) => {
           const body = <><div><strong title={student.studentName}>{student.studentName}{student.studentId === currentStudentId ? " (You)" : ""}</strong><span className="student-summary-meta">{student.submittedDays}/{student.eligibleDays} entries</span></div><b>{Math.round(student.overall)}<small>/100</small></b>{hrefBase ? <ArrowRight size={17} aria-hidden="true" /> : null}</>;
           return hrefBase ? <Link key={student.studentId} href={`${hrefBase}/${student.studentId}`}>{body}</Link> : <div key={student.studentId}>{body}</div>;
-        })}
+        }) : <div className="empty-state compact-empty"><strong>No Students</strong><p>No students in this group.</p></div>}
       </div></section>)}</div>
   );
 }

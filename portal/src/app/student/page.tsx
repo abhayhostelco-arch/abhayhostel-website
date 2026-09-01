@@ -9,7 +9,7 @@ import { formatMinutes, sleepDurationMinutes } from "@/lib/analytics";
 import { daysAgoInIndia, displayDate, todayInIndia } from "@/lib/date";
 import { getEntries, getLeaveRequests, getScoreSettings, getStudentLeaderboardSource } from "@/lib/data";
 import { buildGrowthReport, buildWeeklyCategorySeries } from "@/lib/growth-score";
-import { studentGroupLabel } from "@/lib/student-groups";
+import { isStudentGroup, studentGroupLabel } from "@/lib/student-groups";
 
 export const metadata: Metadata = { title: "Student dashboard" };
 
@@ -22,7 +22,9 @@ export default async function StudentDashboard() {
   ]);
   const report = buildGrowthReport(source.students, source.entries, settings, 7);
   const mine = report.students.find((student) => student.studentId === profile.id);
-  const ownGroupCount = report.students.filter((student) => student.studentGroup === profile.student_group).length;
+  const hasStudentGroup = isStudentGroup(profile.student_group);
+  const ownGroupCount = hasStudentGroup ? report.students.filter((student) => student.studentGroup === profile.student_group).length : 0;
+  const rankDetail = hasStudentGroup && mine?.rank ? `Rank #${mine.rank} of ${ownGroupCount} · ${studentGroupLabel(profile.student_group)}` : "Group migration required";
   const todayEntry = entries.find((entry) => entry.entry_date === today);
   const tasks = [
     ["Wake-up", todayEntry?.wake_time.slice(0, 5) ?? "Not filled", Sunrise],
@@ -54,7 +56,7 @@ export default async function StudentDashboard() {
       <Link className="button" href={`/student/entry?date=${today}`}>{todayEntry ? "Edit Today’s Entry" : "Fill Today’s Entry"}</Link>
     </header>
     <section className="dashboard-kpi-grid dashboard-kpi-five" aria-label="Your 7-day Growth Scores">
-      <DashboardMetric label="Overall Growth" value={`${Math.round(score.overall)}/100`} detail={`Rank #${mine?.rank || "—"} of ${ownGroupCount} · ${studentGroupLabel(profile.student_group)}`} icon={Sparkles} tone="purple" />
+      <DashboardMetric label="Overall Growth" value={`${Math.round(score.overall)}/100`} detail={rankDetail} icon={Sparkles} tone="purple" />
       <DashboardMetric label="Sadhana" value={`${Math.round(score.sadhana)}/100`} detail="Morning Routine" icon={Sunrise} tone="green" />
       <DashboardMetric label="Study" value={`${Math.round(score.study)}/100`} detail="Study & Class" icon={BookOpen} tone="blue" />
       <DashboardMetric label="Discipline" value={`${Math.round(score.discipline)}/100`} detail="Sleep & Wake" icon={MoonStar} tone="orange" />
@@ -68,7 +70,7 @@ export default async function StudentDashboard() {
       <DashboardPanel title="Recent Activities" description="Your latest Daily Entries"><ActivityList items={activityItems} emptyText="Your submitted Daily Entries will appear here." /></DashboardPanel>
       <DashboardPanel title="My Home Leave" description="Applications and approvals" action={<Link href="/student/leave">Open Leave Portal</Link>} className="dashboard-full-panel"><div className="student-mini-stats"><span><b>{leaves.requests.filter((request) => request.status === "pending").length}</b>Pending</span><span><b>{leaves.requests.filter((request) => request.status === "approved").length}</b>Approved</span><span><b>{leaves.requests.filter((request) => request.status === "rejected").length}</b>Rejected</span></div>{!leaves.available ? <p className="field-hint">Available after the leave migration.</p> : null}</DashboardPanel>
     </section>
-    <DashboardPanel title="Hostel Scoreboards" description="Top 10 Students per group · Rolling 7 Days" className="section-gap" action={<span>Your Rank: #{mine?.rank || "—"} of {ownGroupCount}</span>}><CategoryLeaderboard students={report.students} currentStudentId={profile.id} /></DashboardPanel>
+    <DashboardPanel title="Hostel Scoreboards" description="Top 10 Students per group · Rolling 7 Days" className="section-gap" action={<span>{hasStudentGroup && mine?.rank ? `Your Rank: #${mine.rank} of ${ownGroupCount}` : "Group migration required"}</span>}><CategoryLeaderboard students={report.students} currentStudentId={profile.id} /></DashboardPanel>
     <p className="security-note section-gap">Scores cover {displayDate(start)} through {displayDate(today)} and automatically roll forward each day.</p>
   </main>;
 }

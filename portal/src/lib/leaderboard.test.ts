@@ -45,6 +45,15 @@ describe("category leaderboards", () => {
     ]);
   });
 
+  it("leaves ungrouped students out of category ranking", () => {
+    const ranked = rankByCategory([
+      student("configured", "Configured", 80),
+      { ...student("legacy", "Legacy", 90), studentGroup: null },
+    ], "overall");
+
+    expect(ranked.map((item) => [item.studentId, item.categoryRank])).toEqual([["configured", 1], ["legacy", null]]);
+  });
+
   it("retains the current student's placement outside the top ten", () => {
     const students = Array.from({ length: 12 }, (_, index) => student(String(index), `Student ${index}`, 100 - index));
     const placement = leaderboardPlacement(students, "overall", "11");

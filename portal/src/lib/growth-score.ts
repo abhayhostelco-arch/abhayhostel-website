@@ -1,6 +1,7 @@
 import type { DailyEntry, Profile, ScoreSettings, StudentGroup } from "@/lib/types";
 import { startOfIndiaWeek, todayInIndia } from "@/lib/date";
 import { timeToMinutes } from "@/lib/analytics";
+import { isStudentGroup } from "@/lib/student-groups";
 
 export type GrowthBreakdown = {
   sadhana: number;
@@ -21,7 +22,7 @@ export type StudentGrowthReport = GrowthBreakdown & {
   studentGroup: StudentGroup | null;
   eligibleDays: number;
   submittedDays: number;
-  rank: number;
+  rank: number | null;
   daily: DailyGrowthScore[];
 };
 
@@ -174,9 +175,13 @@ export function buildGrowthReport(
     };
   }).sort((a, b) => studentGroupOrder(a.studentGroup) - studentGroupOrder(b.studentGroup) || compareGrowthStudents(a, b, a.overall, b.overall));
 
-  let rankedGroup: StudentGroup | null | undefined;
+  let rankedGroup: StudentGroup | undefined;
   let groupRank = 0;
   reports.forEach((report) => {
+    if (!isStudentGroup(report.studentGroup)) {
+      report.rank = null;
+      return;
+    }
     if (report.studentGroup !== rankedGroup) {
       rankedGroup = report.studentGroup;
       groupRank = 0;

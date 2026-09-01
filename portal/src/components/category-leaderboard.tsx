@@ -26,16 +26,15 @@ export function CategoryLeaderboard({ students, currentStudentId }: { students: 
     <div id={`${tabsetId}-panel`} className="group-scoreboards" role="tabpanel" aria-labelledby={`${tabsetId}-${category}-tab`}>
       {groups.map((group) => {
         const { leaders, current } = leaderboardPlacement(group.students, category, currentStudentId);
-        return <section className="group-scoreboard" key={group.value}><h3>{group.label}</h3><div className="leaderboard-chart">
+        return <section className="group-scoreboard" key={group.value}><h3>{group.label}</h3>{group.students.length ? <><div className="leaderboard-chart">
           {leaders.map((student) => <div className={`leaderboard-bar-row ${student.studentId === currentStudentId ? "is-current" : ""}`} key={student.studentId}>
             <strong className="leaderboard-rank">#{student.categoryRank}</strong>
             <span className="leaderboard-name" title={student.studentName}>{student.studentName}{student.studentId === currentStudentId ? " (You)" : ""}</span>
             <span className="leaderboard-bar-track" aria-hidden="true"><span style={{ width: `${student.categoryScore}%` }} /></span>
             <strong className="leaderboard-score">{student.categoryScore}</strong>
           </div>)}
-        </div>{current ? <div className="own-rank-card"><span>Your position</span><strong>#{current.categoryRank} of {group.students.length} · {current.studentName}</strong><span>{current.categoryScore}/100</span></div> : null}</section>;
+        </div>{current ? <div className="own-rank-card"><span>Your position</span><strong>#{current.categoryRank} of {group.students.length} · {current.studentName}</strong><span>{current.categoryScore}/100</span></div> : null}</> : <div className="empty-state compact-empty"><strong>No Students</strong><p>No students in this group.</p></div>}</section>;
       })}
-      {!groups.length ? <div className="empty-state"><strong>No eligible students</strong><p>The leaderboard will appear when scoring begins.</p></div> : null}
     </div>
   </div>;
 }

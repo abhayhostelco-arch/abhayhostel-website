@@ -36,3 +36,23 @@ The final implementation provides:
 - A final rank/leaderboard consumer audit found only the group-aware ranking utilities, group scoreboard components, and own-group rank labels. The scoreboard components have no `ProfileAvatar` references.
 - No live database, Supabase, email, payment, network, deployment, push, or other external calls were made.
 - No unresolved functional concerns. The two-board rendering intentionally depends on the student-group migration established by Task 2; profiles lacking a group remain outside the configured hostel boards and retain the existing migration-required label behavior.
+
+## Fix round 1: Empty and pre-migration groups
+
+### RED evidence
+
+`npm test -- src/components/group-scoreboards.test.tsx src/lib/growth-score.test.ts src/lib/leaderboard.test.ts src/app/student/progress/group-ranking.test.tsx` failed as expected before implementation:
+
+- Empty Krishna Home boards were omitted because `groupGrowthStudents` filtered empty groups.
+- An ungrouped student received overall rank `1` instead of `null`.
+- The same ungrouped student received category rank `1` instead of `null`.
+- Student progress rendered `Rank #1 of 1 · Migration required` instead of a migration-required state with no rank.
+
+### GREEN evidence
+
+- `npm test -- src/components/group-scoreboards.test.tsx src/lib/growth-score.test.ts src/lib/leaderboard.test.ts src/app/student/progress/group-ranking.test.tsx src/app/admin/students/[id]/student-detail-group-ranking.test.tsx` — 5 files, 30 tests passed.
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `git diff --check` passed.
+
+Configured groups now always render with `No students in this group.` when the authorized/filtered cohort has none. Students without a configured group remain unranked in overall and category scoring and receive `Group migration required` instead of any rank/count on student and staff detail views.

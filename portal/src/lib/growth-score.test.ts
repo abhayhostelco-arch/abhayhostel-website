@@ -159,6 +159,16 @@ describe("Growth Score reporting", () => {
     ]);
   });
 
+  it("leaves students without a configured group unranked", () => {
+    const report = buildGrowthReport(
+      [student("configured", "Configured"), student("legacy", "Legacy", { student_group: null })],
+      [entry("configured"), entry("legacy")],
+      { ...settings, score_start_date: "2026-08-22" }, 1, new Date("2026-08-22T06:30:00Z"),
+    );
+
+    expect(report.students.map((value) => [value.studentId, value.rank])).toEqual([["configured", 1], ["legacy", null]]);
+  });
+
   it("orders distinct internal scores before presentation rounding", () => {
     const report = buildGrowthReport(
       [student("a", "Alpha"), student("z", "Zulu")],

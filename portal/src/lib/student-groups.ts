@@ -5,6 +5,10 @@ export const studentGroupOptions: ReadonlyArray<{ value: StudentGroup; label: st
   { value: "krishna_home", label: "Krishna Home" },
 ];
 
+export function isStudentGroup(group: StudentGroup | null | undefined): group is StudentGroup {
+  return studentGroupOptions.some((option) => option.value === group);
+}
+
 export function studentGroupLabel(group: StudentGroup | null | undefined): string {
   return studentGroupOptions.find((option) => option.value === group)?.label ?? "Migration required";
 }
