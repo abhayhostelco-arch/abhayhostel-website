@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(66);
+select plan(69);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -236,15 +236,32 @@ select lives_ok(
   'Student can upload an avatar in their own folder'
 );
 select is((select count(*)::integer from storage.objects where bucket_id = 'student-avatars'), 1, 'Student sees their own avatar');
-select lives_ok(
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', true);
+select is((select count(*)::integer from storage.objects where bucket_id = 'student-avatars'), 0, 'Student cannot read another Student avatar');
+select throws_ok(
+  $$ update storage.objects set metadata = '{"forged":true}'::jsonb where bucket_id = 'student-avatars' and name = '00000000-0000-4000-8000-000000000001/avatar-1724800000000.webp' $$,
+  '42501', null, 'Student cannot update another Student avatar'
+);
+select throws_ok(
   $$ delete from storage.objects where bucket_id = 'student-avatars' and name = '00000000-0000-4000-8000-000000000001/avatar-1724800000000.webp' $$,
-  'Student can remove their own avatar'
+  '42501', null, 'Student cannot remove another Student avatar'
 );
 
 reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000003', true);
-select is((select count(*)::integer from storage.objects where bucket_id = 'student-avatars'), 0, 'Mentor cannot read an absent avatar');
+select is((select count(*)::integer from storage.objects where bucket_id = 'student-avatars'), 1, 'Mentor can read an assigned Student avatar');
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', true);
+select lives_ok(
+  $$ delete from storage.objects where bucket_id = 'student-avatars' and name = '00000000-0000-4000-8000-000000000001/avatar-1724800000000.webp' $$,
+  'Student can remove their own avatar'
+);
 
 reset role;
 set local role authenticated;
