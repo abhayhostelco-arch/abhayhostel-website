@@ -59,4 +59,22 @@ describe("student detail group ranking", () => {
     expect(html).toContain("Rank #2 of 2 · Abhay Hostel");
     expect(html).not.toContain("Rank #2 of 3");
   });
+
+  it("renders the Student profile picture in the detail header", async () => {
+    mocks.getProfileEnhancements.mockResolvedValue({
+      available: true,
+      birthDate: null,
+      avatarPath: `${target.id}/avatar-1724800000000.webp`,
+    });
+    mocks.getAvatarSignedUrl.mockResolvedValue("https://portal.example/student-avatar");
+
+    const page = await StudentDetailPage({
+      params: Promise.resolve({ id: target.id }),
+      searchParams: Promise.resolve({ range: "7" }),
+    });
+    const html = renderToStaticMarkup(<ThemeProvider>{page}</ThemeProvider>);
+
+    expect(html).toContain('src="https://portal.example/student-avatar"');
+    expect(html).toContain("alt=\"Zulu Target&#x27;s profile picture\"");
+  });
 });
