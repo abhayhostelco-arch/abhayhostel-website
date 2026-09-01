@@ -59,6 +59,16 @@ export async function resubmitStudentPaymentAction(_previous: ActionState, formD
   return { status: "success", message: "Payment resubmitted for review." };
 }
 
+export async function cancelStudentPaymentAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
+  const profile = await requireProfile(["student"]);
+  const paymentId = z.uuid().safeParse(formData.get("paymentId"));
+  if (!paymentId.success) return { status: "error", message: "This payment could not be cancelled." };
+  const { error } = await createAdminClient().rpc("cancel_student_payment", { p_actor_uuid: profile.id, p_payment_uuid: paymentId.data });
+  if (error) return { status: "error", message: "Only pending or rejected payments can be cancelled." };
+  revalidatePaymentPages();
+  return { status: "success", message: "Payment request cancelled." };
+}
+
 export async function reviewStudentPaymentAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
   const profile = await requireProfile(["super_admin", "admin"]);
   const parsed = paymentReviewSchema.safeParse({
@@ -98,9 +108,20 @@ export async function updatePaymentSettingsAction(_previous: ActionState, formDa
   if (file && (!(file.type in qrMimeExtensions) || !extension || !qrFilenameExtensions[file.type as keyof typeof qrFilenameExtensions].includes(extension as never) || file.size > 2 * 1024 * 1024 || !await isPaymentQrImage(file))) {
     return { status: "error", message: "Use a JPG, PNG, or WebP image no larger than 2 MB." };
   }
-  const save = (qrPath: string | null) => admin.rpc("update_payment_settings", {
-    p_actor_uuid: profile.id, p_qr_path: qrPath ?? "", p_instructions: instructions.data,
+  const save = (qrPath: string | null, paymentInstructions = instructions.data) => admin.rpc("update_payment_settings", {
+    p_actor_uuid: profile.id, p_qr_path: qrPath ?? "", p_instructions: paymentInstructions,
   });
+  if (formData.get("removeQr") === "on") {
+    const { error } = await save(null, "");
+    if (error) return { status: "error", message: "Payment settings could not be saved." };
+    if (current.data.qr_path) {
+      const cleanup = await admin.storage.from("payment-qr").remove([current.data.qr_path]);
+      if (cleanup.error) return { status: "success", message: "QR code removed from the portal, but the old file could not be deleted automatically." };
+    }
+    revalidatePath("/admin/settings");
+    revalidatePaymentPages();
+    return { status: "success", message: "QR code removed." };
+  }
   if (!file) {
     const { error } = await save(current.data.qr_path);
     if (error) return { status: "error", message: "Payment settings could not be saved." };

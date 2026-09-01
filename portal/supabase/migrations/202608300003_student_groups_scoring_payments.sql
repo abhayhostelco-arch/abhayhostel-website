@@ -1,16 +1,16 @@
 begin;
 
-create temporary table student_scoring_migration_counts on commit drop as
-select
-  (select count(*) from public.profiles where role = 'student') as student_count,
-  (select count(*) from public.daily_entries) as daily_entry_count,
-  (select count(*) from public.leave_requests) as leave_count,
-  (
-    (select count(*) from public.gita_class_attendance)
-    + (select count(*) from public.attendance_records)
-    + (select count(*) from public.weekly_program_entries)
-  ) as attendance_count,
-  (select count(*) from public.audit_events) as audit_count;
+grant execute on function private.current_user_is_active() to authenticated;
+
+do $$
+begin
+  perform set_config('student_scoring.before_student_count', (select count(*)::text from public.profiles where role = 'student'), true);
+  perform set_config('student_scoring.before_daily_entry_count', (select count(*)::text from public.daily_entries), true);
+  perform set_config('student_scoring.before_leave_count', (select count(*)::text from public.leave_requests), true);
+  perform set_config('student_scoring.before_attendance_count', ((select count(*) from public.gita_class_attendance) + (select count(*) from public.attendance_records) + (select count(*) from public.weekly_program_entries))::text, true);
+  perform set_config('student_scoring.before_audit_count', (select count(*)::text from public.audit_events), true);
+end;
+$$;
 
 create type public.student_group as enum ('abhay_hostel', 'krishna_home');
 create type public.payment_status as enum ('pending', 'verified', 'rejected');
@@ -1152,27 +1152,29 @@ grant execute on function public.update_student_group(uuid, uuid, public.student
 
 do $$
 declare
-  before_counts record;
+  before_student_count bigint := current_setting('student_scoring.before_student_count')::bigint;
+  before_daily_entry_count bigint := current_setting('student_scoring.before_daily_entry_count')::bigint;
+  before_leave_count bigint := current_setting('student_scoring.before_leave_count')::bigint;
+  before_attendance_count bigint := current_setting('student_scoring.before_attendance_count')::bigint;
+  before_audit_count bigint := current_setting('student_scoring.before_audit_count')::bigint;
 begin
-  select * into before_counts from student_scoring_migration_counts;
-
-  if (select count(*) from public.profiles where role = 'student') < before_counts.student_count then
+  if (select count(*) from public.profiles where role = 'student') < before_student_count then
     raise exception 'student row count decreased during migration';
   end if;
-  if (select count(*) from public.daily_entries) < before_counts.daily_entry_count then
+  if (select count(*) from public.daily_entries) < before_daily_entry_count then
     raise exception 'daily-entry row count decreased during migration';
   end if;
-  if (select count(*) from public.leave_requests) < before_counts.leave_count then
+  if (select count(*) from public.leave_requests) < before_leave_count then
     raise exception 'leave row count decreased during migration';
   end if;
   if (
     (select count(*) from public.gita_class_attendance)
     + (select count(*) from public.attendance_records)
     + (select count(*) from public.weekly_program_entries)
-  ) < before_counts.attendance_count then
+  ) < before_attendance_count then
     raise exception 'attendance row count decreased during migration';
   end if;
-  if (select count(*) from public.audit_events) < before_counts.audit_count then
+  if (select count(*) from public.audit_events) < before_audit_count then
     raise exception 'audit row count decreased during migration';
   end if;
 end;

@@ -173,7 +173,9 @@ export async function getPrivateUploadSignedUrl(bucket: "maha-mantra-evidence" |
 export async function getPaymentSettings(): Promise<{ available: boolean; settings: PaymentSettings | null }> {
   const { data, error } = await (await createClient()).from("payment_settings").select("*").eq("id", true).maybeSingle();
   if (isMissingSchemaError(error)) return { available: false, settings: null };
-  if (error) throw new Error("Unable to load payment settings.");
+  if (error) {
+    throw new Error("Unable to load payment settings.");
+  }
   return { available: true, settings: data as PaymentSettings | null };
 }
 

@@ -32,46 +32,41 @@ export type GrowthReport = {
   dates: string[];
 };
 
-const CHANTING_TARGET_ROUNDS = 2;
-const READING_TARGET_MINUTES = 30;
-const STUDY_TARGET_MINUTES = 6 * 60;
-const BEDTIME_TARGET = "22:00:00";
-const WAKE_TARGET = "05:00:00";
-const DISCIPLINE_COMPONENT_POINTS = 25;
-const DISCIPLINE_LATE_INTERVAL_MINUTES = 30;
-const DISCIPLINE_LATE_DEDUCTION = 5;
-const SEVA_WEEKLY_TARGET_MINUTES = 180;
-
 const clampScore = (value: number) => Math.max(0, Math.min(100, value));
 const progress = (actual: number, target: number) => clampScore((actual / target) * 100);
 
-function disciplineComponent(actual: string, target: string, overnight = false): number {
+function disciplineComponent(actual: string, target: string, grace: number, overnight = false): number {
   let actualMinutes = timeToMinutes(actual);
   let targetMinutes = timeToMinutes(target);
   if (overnight) {
     if (actualMinutes < 12 * 60) actualMinutes += 1440;
     if (targetMinutes < 12 * 60) targetMinutes += 1440;
   }
-  const lateIntervals = Math.ceil(Math.max(0, actualMinutes - targetMinutes) / DISCIPLINE_LATE_INTERVAL_MINUTES);
-  return Math.max(0, DISCIPLINE_COMPONENT_POINTS - lateIntervals * DISCIPLINE_LATE_DEDUCTION);
+  const lateBy = Math.max(0, actualMinutes - targetMinutes);
+  return clampScore(100 - (lateBy / grace) * 100);
 }
 
-function equalOverall(scores: Omit<GrowthBreakdown, "overall">): number {
-  return (scores.sadhana + scores.study + scores.discipline + scores.seva) / 4;
+function weightedOverall(scores: Omit<GrowthBreakdown, "overall">, settings: ScoreSettings): number {
+  return (scores.sadhana * settings.sadhana_weight
+    + scores.study * settings.study_weight
+    + scores.discipline * settings.discipline_weight
+    + scores.seva * settings.seva_weight) / 100;
 }
 
-export function scoreDailyEntry(entry: DailyEntry, _settings: ScoreSettings, weeklySevaScore = 0): GrowthBreakdown {
+export function scoreDailyEntry(entry: DailyEntry, settings: ScoreSettings, weeklySevaScore = 0): GrowthBreakdown {
   const sadhanaParts = [
-    progress(entry.chanting_rounds ?? 0, CHANTING_TARGET_ROUNDS),
-    (entry.morning_arati_status ?? (entry.morning_arati_attended ? "present" : "absent")) === "present" ? 100 : 0,
-    ...(entry.gita_class_status === "no_class" ? [] : [entry.gita_class_status === "present" ? 100 : 0]),
-    progress(entry.evening_reading_minutes, READING_TARGET_MINUTES),
+    { weight: 37.5, score: progress(entry.chanting_rounds ?? 0, settings.chanting_target_rounds), included: true },
+    { weight: 25, score: (entry.morning_arati_status ?? (entry.morning_arati_attended ? "present" : "absent")) === "present" ? 100 : 0, included: true },
+    { weight: 25, score: entry.gita_class_status === "present" ? 100 : 0, included: entry.gita_class_status !== "no_class" },
+    { weight: 12.5, score: progress(entry.evening_reading_minutes, settings.evening_reading_target_minutes), included: true },
   ];
-  const sadhana = sadhanaParts.reduce((sum, score) => sum + score, 0) / sadhanaParts.length;
-  const study = progress(entry.study_minutes, STUDY_TARGET_MINUTES);
-  const discipline = disciplineComponent(entry.sleep_time, BEDTIME_TARGET, true) + disciplineComponent(entry.wake_time, WAKE_TARGET);
-  const categories = { sadhana, study, discipline, seva: clampScore(weeklySevaScore) };
-  return { ...categories, overall: equalOverall(categories) };
+  const availableSadhanaWeight = sadhanaParts.filter((part) => part.included).reduce((sum, part) => sum + part.weight, 0);
+  const sadhana = sadhanaParts.filter((part) => part.included).reduce((sum, part) => sum + part.score * part.weight, 0) / availableSadhanaWeight;
+  const study = progress(entry.study_minutes, settings.study_target_minutes) * 0.8 + (entry.library_attended ? 20 : 0);
+  const discipline = (disciplineComponent(entry.wake_time, settings.wake_target_time, settings.discipline_grace_minutes)
+    + disciplineComponent(entry.sleep_time, settings.bedtime_target_time, settings.discipline_grace_minutes, true)) / 2;
+  const categories = { sadhana, study: clampScore(study), discipline, seva: clampScore(weeklySevaScore) };
+  return { ...categories, overall: weightedOverall(categories, settings) };
 }
 
 function listDates(start: string, end: string): string[] {
@@ -139,7 +134,7 @@ export function buildGrowthReport(
       const eligibleStart = laterDate(weekStart, settings.score_start_date, student.joined_on);
       const eligibleEnd = weekStart <= currentDate && currentDate < weekEnd ? currentDate : weekEnd;
       const eligibleDays = dayCount(eligibleStart, eligibleEnd);
-      const target = SEVA_WEEKLY_TARGET_MINUTES * eligibleDays / 7;
+      const target = settings.seva_target_minutes * eligibleDays / 7;
       const totalMinutes = entries
         .filter((entry) => entry.student_id === student.id && entry.entry_date >= eligibleStart && entry.entry_date <= eligibleEnd)
         .reduce((sum, entry) => sum + entry.seva_minutes, 0);

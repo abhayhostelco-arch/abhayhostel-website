@@ -48,10 +48,10 @@ describe("student groups, payments, and notifications migration safety", () => {
 
   it("records and enforces all required row-count preservation guards", () => {
     const snapshotIndex = normalized.indexOf(
-      "create temporary table student_scoring_migration_counts on commit drop as",
+      "perform set_config('student_scoring.before_student_count'",
     );
     const schemaChangeIndex = normalized.indexOf("create type public.student_group");
-    const guardIndex = normalized.indexOf("select * into before_counts from student_scoring_migration_counts;");
+    const guardIndex = normalized.indexOf("before_student_count bigint := current_setting('student_scoring.before_student_count')::bigint;");
 
     expect(snapshotIndex).toBeGreaterThan(-1);
     expect(snapshotIndex).toBeLessThan(schemaChangeIndex);
@@ -67,19 +67,33 @@ describe("student groups, payments, and notifications migration safety", () => {
     }
   });
 
-  it("permits only the required audit constraint replacement among feature-migration drops", () => {
+  it("permits only audited constraint replacements and the explicitly authorized student payment cancellation", () => {
     const destructiveStatements = featureMigrations.flatMap(({ filename, normalized: sql }) =>
       [...sql.matchAll(/\b(?:delete from|truncate|drop table|drop column|drop constraint|drop policy|drop type|drop function)\b[^;]*;/g)]
         .map(([statement]) => ({ filename, statement })),
     );
 
-    expect(destructiveStatements).toEqual([{
-      filename: "202608300003_student_groups_scoring_payments.sql",
-      statement: "drop constraint audit_events_action_check;",
-    }]);
+    expect(destructiveStatements).toEqual([
+      {
+        filename: "202608300003_student_groups_scoring_payments.sql",
+        statement: "drop constraint audit_events_action_check;",
+      },
+      {
+        filename: "202609010003_cancel_student_payment.sql",
+        statement: "drop constraint audit_events_action_check;",
+      },
+      {
+        filename: "202609010003_cancel_student_payment.sql",
+        statement: "delete from public.student_payments where id = payment_row.id;",
+      },
+    ]);
     expect(normalized).toContain(
       "alter table public.audit_events add constraint audit_events_action_check check",
     );
+    const cancelMigration = featureMigrations.find(({ filename }) => filename === "202609010003_cancel_student_payment.sql")!.normalized;
+    expect(cancelMigration).toContain("where id = p_payment_uuid and student_id = p_actor_uuid for update;");
+    expect(cancelMigration).toContain("if not found or payment_row.status = 'verified' then");
+    expect(cancelMigration).toContain("'payment_cancelled'");
   });
 
   it("revokes direct service-role mutations on RPC-owned tables", () => {

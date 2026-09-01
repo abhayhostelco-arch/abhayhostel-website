@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({ requireProfile: vi.fn(), getPaymentSettings: v
 vi.mock("@/lib/auth", () => ({ requireProfile: mocks.requireProfile }));
 vi.mock("@/lib/data", () => ({ getPaymentSettings: mocks.getPaymentSettings, getPaymentQrSignedUrl: mocks.getPaymentQrSignedUrl, getStudentPayments: mocks.getStudentPayments }));
 vi.mock("@/components/student-payment-form", () => ({ StudentPaymentForm: () => <div>payment form</div> }));
+vi.mock("@/components/student-payment-edit", () => ({ StudentPaymentEdit: ({ payment }: { payment: StudentPayment }) => <button type="button">{payment.status === "rejected" ? "Correct rejected payment" : "Edit pending payment"}</button> }));
+vi.mock("@/components/cancel-payment-button", () => ({ CancelPaymentButton: () => <button type="button">Cancel request</button> }));
 
 import StudentPaymentsPage from "@/app/student/payments/page";
 

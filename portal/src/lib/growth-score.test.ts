@@ -4,9 +4,9 @@ import type { DailyEntry, Profile, ScoreSettings } from "@/lib/types";
 
 const settings: ScoreSettings = {
   id: true, sadhana_weight: 40, study_weight: 25, discipline_weight: 20, seva_weight: 15,
-  chanting_target_rounds: 16, evening_reading_target_minutes: 90, study_target_minutes: 240,
-  wake_target_time: "06:00:00", bedtime_target_time: "22:30:00", seva_target_minutes: 60,
-  discipline_grace_minutes: 120, score_start_date: "2026-01-01", updated_by: null, updated_at: "2026-08-20T00:00:00Z",
+  chanting_target_rounds: 2, evening_reading_target_minutes: 30, study_target_minutes: 360,
+  wake_target_time: "05:00:00", bedtime_target_time: "22:00:00", seva_target_minutes: 180,
+  discipline_grace_minutes: 30, score_start_date: "2026-01-01", updated_by: null, updated_at: "2026-08-20T00:00:00Z",
 };
 
 const student = (id: string, name: string, overrides: Partial<Profile> = {}): Profile => ({
@@ -24,8 +24,8 @@ const entry = (studentId: string, overrides: Partial<DailyEntry> = {}): DailyEnt
   updated_at: "2026-08-22T00:00:00Z", ...overrides,
 });
 
-describe("fixed daily Growth Score formula", () => {
-  it("equally averages fixed Sadhana components and excludes a no-class Gita component", () => {
+describe("configurable daily Growth Score formula", () => {
+  it("uses configured Sadhana targets and excludes a no-class Gita component", () => {
     const scored = scoreDailyEntry(entry("a", { chanting_rounds: 1, morning_arati_status: "late", gita_class_status: "present", evening_reading_minutes: 15 }), settings, 80);
     const noClass = scoreDailyEntry(entry("a", { chanting_rounds: 1, morning_arati_status: "absent", gita_class_status: "no_class", evening_reading_minutes: 15 }), settings, 80);
 
@@ -33,23 +33,23 @@ describe("fixed daily Growth Score formula", () => {
     expect(noClass.sadhana).toBeCloseTo(100 / 3);
   });
 
-  it("scores Study against six hours without a library bonus and caps it at 100", () => {
-    expect(scoreDailyEntry(entry("a", { study_minutes: 180, library_attended: true }), settings, 0).study).toBe(50);
-    expect(scoreDailyEntry(entry("a", { study_minutes: 720, library_attended: false }), settings, 0).study).toBe(100);
+  it("uses the configured Study target and retains the library bonus", () => {
+    expect(scoreDailyEntry(entry("a", { study_minutes: 180, library_attended: true }), settings, 0).study).toBe(60);
+    expect(scoreDailyEntry(entry("a", { study_minutes: 720, library_attended: false }), settings, 0).study).toBe(80);
   });
 
-  it("deducts five Discipline points for every started 30-minute late interval", () => {
-    expect(scoreDailyEntry(entry("a", { sleep_time: "22:00:00", wake_time: "05:00:00" }), settings, 0).discipline).toBe(50);
-    expect(scoreDailyEntry(entry("a", { sleep_time: "22:01:00", wake_time: "05:30:00" }), settings, 0).discipline).toBe(40);
-    expect(scoreDailyEntry(entry("a", { sleep_time: "22:30:00", wake_time: "05:31:00" }), settings, 0).discipline).toBe(35);
+  it("uses the configured Discipline targets and grace period", () => {
+    expect(scoreDailyEntry(entry("a", { sleep_time: "22:00:00", wake_time: "05:00:00" }), settings, 0).discipline).toBe(100);
+    expect(scoreDailyEntry(entry("a", { sleep_time: "22:01:00", wake_time: "05:30:00" }), settings, 0).discipline).toBeCloseTo(48.3333);
+    expect(scoreDailyEntry(entry("a", { sleep_time: "22:30:00", wake_time: "05:31:00" }), settings, 0).discipline).toBe(0);
     expect(scoreDailyEntry(entry("a", { sleep_time: "03:00:00", wake_time: "08:00:00" }), settings, 0).discipline).toBe(0);
   });
 
-  it("uses equal category weighting and retains unrounded internal scores", () => {
+  it("uses configured category weighting and retains unrounded internal scores", () => {
     const scored = scoreDailyEntry(entry("a", { study_minutes: 1 }), settings, 80);
 
-    expect(scored.study).toBeCloseTo(100 / 360);
-    expect(scored.overall).toBeCloseTo((100 + (100 / 360) + 50 + 80) / 4);
+    expect(scored.study).toBeCloseTo((100 / 360) * 0.8);
+    expect(scored.overall).toBeCloseTo(scored.sadhana * .4 + scored.study * .25 + scored.discipline * .2 + 80 * .15);
   });
 });
 
@@ -114,7 +114,7 @@ describe("weekly Seva Growth Score", () => {
     );
 
     expect(report.students[0].daily[1]).toEqual({ date: "2026-08-18", submitted: false, sadhana: 0, study: 0, discipline: 0, seva: 0, overall: 0 });
-    expect(report.students[0]).toMatchObject({ eligibleDays: 2, submittedDays: 1, sadhana: 50, study: 50, discipline: 25, seva: 50, overall: 43.75 });
+    expect(report.students[0]).toMatchObject({ eligibleDays: 2, submittedDays: 1, sadhana: 50, study: 40, discipline: 50, seva: 50, overall: 47.5 });
   });
 });
 
@@ -194,7 +194,7 @@ describe("Growth Score reporting", () => {
       [entry("a"), entry("b", { chanting_rounds: 0, morning_arati_attended: false, morning_arati_status: "absent", gita_class_status: "absent", evening_reading_minutes: 0 })],
       { ...settings, score_start_date: "2026-08-22" }, 7, new Date("2026-08-22T06:30:00Z"),
     );
-    expect(buildWeeklyCategorySeries(report, "a")).toEqual([{ date: "08-22", sadhana: 100, study: 100, discipline: 50, seva: 0 }]);
-    expect(buildWeeklyCategorySeries(report)).toEqual([{ date: "08-22", sadhana: 50, study: 100, discipline: 50, seva: 0 }]);
+    expect(buildWeeklyCategorySeries(report, "a")).toEqual([{ date: "08-22", sadhana: 100, study: 80, discipline: 100, seva: 0 }]);
+    expect(buildWeeklyCategorySeries(report)).toEqual([{ date: "08-22", sadhana: 50, study: 80, discipline: 100, seva: 0 }]);
   });
 });

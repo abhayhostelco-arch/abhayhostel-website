@@ -5,9 +5,11 @@ const nextConfig: NextConfig = {
   devIndicators: { position: "bottom-right" },
   turbopack: { root: process.cwd() },
   experimental: {
-    proxyClientMaxBodySize: "128kb",
+    // The QR image itself is capped at 2 MiB by validation. Allow multipart
+    // request overhead so a valid maximum-size upload reaches that validation.
+    proxyClientMaxBodySize: "3mb",
     serverActions: {
-      bodySizeLimit: "64kb",
+      bodySizeLimit: "3mb",
       allowedOrigins: ["app.abhayhostel.in"],
     },
   },

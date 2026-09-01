@@ -6,7 +6,7 @@ import { resubmitStudentPaymentAction, submitStudentPaymentAction } from "@/app/
 import { todayInIndia } from "@/lib/date";
 import { initialActionState, type StudentPayment } from "@/lib/types";
 
-export function StudentPaymentForm({ payment }: { payment?: StudentPayment }) {
+export function StudentPaymentForm({ payment, onCancel }: { payment?: StudentPayment; onCancel?: () => void }) {
   const actionFn = payment ? resubmitStudentPaymentAction : submitStudentPaymentAction;
   const [state, action, pending] = useActionState(actionFn, initialActionState);
   const today = todayInIndia();
@@ -18,6 +18,6 @@ export function StudentPaymentForm({ payment }: { payment?: StudentPayment }) {
     <div className="field"><label htmlFor={`utr-${payment?.id ?? "new"}`}>UPI reference (UTR)</label><input id={`utr-${payment?.id ?? "new"}`} name="utr" minLength={6} maxLength={40} pattern="[A-Za-z0-9]+" defaultValue={payment?.utr ?? ""} required />{state.fieldErrors?.utr?.map((message) => <p className="field-error" key={message} role="alert">{message}</p>)}</div>
     <div className="field full-span"><label htmlFor={`note-${payment?.id ?? "new"}`}>Note (optional)</label><textarea id={`note-${payment?.id ?? "new"}`} name="note" maxLength={500} defaultValue={payment?.note ?? ""} />{state.fieldErrors?.note?.map((message) => <p className="field-error" key={message} role="alert">{message}</p>)}</div>
     {state.message ? <p className={`form-message full-span ${state.status === "success" ? "form-success" : "form-error"}`} role={state.status === "success" ? "status" : "alert"}>{state.message}</p> : null}
-    <div className="full-span form-submit-bar"><button className="button" type="submit" disabled={pending}><Send size={18} aria-hidden="true" />{pending ? "Saving…" : payment ? "Resubmit for Review" : "Submit Payment"}</button></div>
+    <div className="full-span form-submit-bar">{onCancel ? <button className="button button-secondary" type="button" onClick={onCancel} disabled={pending}>Cancel</button> : null}<button className="button" type="submit" disabled={pending}><Send size={18} aria-hidden="true" />{pending ? "Saving…" : payment ? "Resubmit for Review" : "Submit Payment"}</button></div>
   </form>;
 }

@@ -16,16 +16,13 @@ const settings: ScoreSettings = {
   discipline_grace_minutes: 120, score_start_date: "2026-08-20", updated_by: null, updated_at: "2026-08-20T00:00:00Z",
 };
 
-describe("fixed Growth Score settings", () => {
-  it("shows the server-owned rubric as read-only and exposes only the launch date", () => {
+describe("configurable Growth Score settings", () => {
+  it("exposes the rubric controls and scoring launch date", () => {
     render(<ScoreSettingsForm settings={settings} />);
 
-    expect(screen.getByText("2 rounds")).toBeInTheDocument();
-    expect(screen.getByText("6 hours per day")).toBeInTheDocument();
-    expect(screen.getByText("180 minutes per Monday–Sunday week")).toBeInTheDocument();
+    expect(screen.getByLabelText("Sadhana weight (%)")).toHaveValue(40);
+    expect(screen.getByLabelText("Study target (minutes)")).toHaveValue(240);
+    expect(screen.getByLabelText("Wake-up target")).toHaveValue("06:00");
     expect(screen.getByLabelText("Scoring launch date")).toHaveValue("2026-08-20");
-    expect(screen.queryByLabelText("Sadhana weight (%)")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Study target (minutes)")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Wake-up target")).not.toBeInTheDocument();
   });
 });

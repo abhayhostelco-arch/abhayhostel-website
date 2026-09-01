@@ -5,10 +5,12 @@ function createCsp(): string {
   const isDev = process.env.NODE_ENV === "development";
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   let connectSources = "'self'";
+  let imageSources = "'self' data: blob:";
   if (supabaseUrl) {
     try {
       const origin = new URL(supabaseUrl).origin;
       connectSources += ` ${origin} ${origin.replace("https://", "wss://")}`;
+      imageSources += ` ${origin}`;
     } catch {
       // Invalid configuration fails authentication; keep the CSP restrictive.
     }
@@ -19,7 +21,7 @@ function createCsp(): string {
     `script-src 'self' https://challenges.cloudflare.com 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
     "style-src-attr 'unsafe-inline'",
-    "img-src 'self' data: blob:",
+    `img-src ${imageSources}`,
     "font-src 'self'",
     `connect-src ${connectSources} https://challenges.cloudflare.com`,
     "frame-src https://challenges.cloudflare.com",
