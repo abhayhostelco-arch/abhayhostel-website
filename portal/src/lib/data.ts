@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { AlertSettings, AttendanceEvent, AttendancePerson, AttendanceRecord, DailyEntry, GitaClassAttendance, LeaveRequest, LeaveStatus, Profile, ScoreSettings, SharedResource, WeeklyProgram, WeeklyProgramEntry } from "@/lib/types";
+import type { AlertSettings, AttendanceEvent, AttendancePerson, AttendanceRecord, DailyEntry, GitaClassAttendance, LeaveRequest, LeaveStatus, PaymentSettings, Profile, ScoreSettings, SharedResource, StudentPayment, WeeklyProgram, WeeklyProgramEntry } from "@/lib/types";
 import { isMissingSchemaError } from "@/lib/schema-compat";
 import { startOfIndiaWeek } from "@/lib/date";
 
@@ -168,6 +168,26 @@ export async function getPrivateUploadSignedUrl(bucket: "maha-mantra-evidence" |
   const { data, error } = await createAdminClient().storage.from(bucket).createSignedUrl(path, 60 * 60);
   if (error) return null;
   return data.signedUrl;
+}
+
+export async function getPaymentSettings(): Promise<{ available: boolean; settings: PaymentSettings | null }> {
+  const { data, error } = await (await createClient()).from("payment_settings").select("*").eq("id", true).maybeSingle();
+  if (isMissingSchemaError(error)) return { available: false, settings: null };
+  if (error) throw new Error("Unable to load payment settings.");
+  return { available: true, settings: data as PaymentSettings | null };
+}
+
+export async function getPaymentQrSignedUrl(path?: string | null): Promise<string | null> {
+  if (!path) return null;
+  const { data, error } = await createAdminClient().storage.from("payment-qr").createSignedUrl(path, 5 * 60);
+  return error ? null : data.signedUrl;
+}
+
+export async function getStudentPayments(): Promise<{ available: boolean; payments: StudentPayment[] }> {
+  const { data, error } = await (await createClient()).from("student_payments").select("*").order("payment_date", { ascending: false }).order("created_at", { ascending: false }).limit(500);
+  if (isMissingSchemaError(error)) return { available: false, payments: [] };
+  if (error) throw new Error("Unable to load payments.");
+  return { available: true, payments: (data ?? []) as StudentPayment[] };
 }
 
 export async function getGitaAttendance(

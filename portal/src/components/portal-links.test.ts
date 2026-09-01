@@ -10,4 +10,10 @@ describe("getPortalLinks", () => {
       group: "System",
     });
   });
+
+  it("makes monthly payments reachable for Students, Mentors, and the Super Admin", () => {
+    expect(getPortalLinks("student")).toContainEqual(expect.objectContaining({ href: "/student/payments", label: "Payments" }));
+    expect(getPortalLinks("admin")).toContainEqual(expect.objectContaining({ href: "/mentor/payments", label: "Payments" }));
+    expect(getPortalLinks("super_admin")).toContainEqual(expect.objectContaining({ href: "/admin/payments", label: "Payments" }));
+  });
 });

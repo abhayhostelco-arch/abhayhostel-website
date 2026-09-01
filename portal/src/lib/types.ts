@@ -3,6 +3,7 @@ export type StudentGroup = "abhay_hostel" | "krishna_home";
 export type GitaClassStatus = "present" | "absent" | "no_class";
 export type MorningAratiStatus = "present" | "late" | "absent";
 export type LeaveStatus = "pending" | "approved" | "rejected" | "withdrawn";
+export type PaymentStatus = "pending" | "verified" | "rejected";
 
 export interface Profile {
   id: string;
@@ -96,6 +97,31 @@ export interface AlertSettings {
   min_study_minutes: number;
   absence_alert_enabled: boolean;
   updated_by: string | null;
+  updated_at: string;
+}
+
+export interface PaymentSettings {
+  id: boolean;
+  qr_path: string | null;
+  instructions: string;
+  updated_by: string | null;
+  updated_at: string;
+}
+
+export interface StudentPayment {
+  id: string;
+  student_id: string;
+  fee_month: string;
+  amount_paise: number;
+  payment_date: string;
+  utr: string;
+  note: string | null;
+  status: PaymentStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  rejection_reason: string | null;
+  version: number;
+  created_at: string;
   updated_at: string;
 }
 
