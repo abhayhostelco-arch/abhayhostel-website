@@ -59,7 +59,7 @@ export default async function StudentDashboard() {
       <DashboardMetric label="Overall Growth" value={`${Math.round(score.overall)}/100`} detail={rankDetail} icon={Sparkles} tone="purple" />
       <DashboardMetric label="Sadhana" value={`${Math.round(score.sadhana)}/100`} detail="Morning Routine" icon={Sunrise} tone="green" />
       <DashboardMetric label="Study" value={`${Math.round(score.study)}/100`} detail="Study & Class" icon={BookOpen} tone="blue" />
-      <DashboardMetric label="Discipline" value={`${Math.round(score.discipline)}/100`} detail="Sleep & Wake" icon={MoonStar} tone="orange" />
+      <DashboardMetric label="Discipline" value={`${Math.round(score.discipline)}/50`} detail="Sleep & Wake · fixed 50-point rubric" icon={MoonStar} tone="orange" />
       <DashboardMetric label="Seva" value={`${Math.round(score.seva)}/100`} detail="Service Minutes" icon={HeartHandshake} tone="rose" />
     </section>
     <section className="dashboard-reference-grid section-gap">

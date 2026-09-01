@@ -62,7 +62,7 @@ export default async function StudentsPage({
                           <input type="hidden" name="targetId" value={student.id} />
                           <input type="hidden" name="active" value="false" />
                           <ConfirmSubmitButton message={`Deactivate ${student.full_name}? They will no longer be able to sign in.`}>Deactivate</ConfirmSubmitButton>
-                        </form> : student.student_group ? <StudentReactivationForm studentId={student.id} studentName={student.full_name} studentGroup={student.student_group} /> : <span className="form-error">Apply the Student group migration before reactivation.</span>}
+                        </form> : student.student_group ? <StudentReactivationForm studentId={student.id} studentName={student.full_name} studentGroup={student.student_group} canChangeGroup={actor.role === "super_admin"} /> : <span className="form-error">Apply the Student group migration before reactivation.</span>}
                         <AccountResetForm targetId={student.id} />
                       </div>
                     </td>

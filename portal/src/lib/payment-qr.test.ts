@@ -68,4 +68,22 @@ describe("payment QR replacement", () => {
     expect(result).toEqual({ ok: true });
     expect(calls).toEqual(["upload", "settings", "remove"]);
   });
+
+  it("retries a failed previous-QR deletion a bounded number of times and logs the unresolved object", async () => {
+    const qr = await loadQr();
+    expect(qr).not.toBeNull();
+    if (!qr) return;
+
+    const remove = vi.fn().mockResolvedValue({ error: { message: "storage unavailable" } });
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const result = await qr.replacePaymentQr({
+      oldPath: "settings/old.png", newPath: "settings/new.png", file: new Blob(["qr"], { type: "image/png" }),
+      upload: vi.fn().mockResolvedValue({ error: null }), remove, updateSettings: vi.fn().mockResolvedValue({ error: null }),
+    });
+
+    expect(result).toEqual({ ok: true, previousQrCleanupFailed: true });
+    expect(remove).toHaveBeenCalledTimes(3);
+    expect(remove).toHaveBeenNthCalledWith(1, ["settings/old.png"]);
+    expect(error).toHaveBeenCalledWith("Previous payment QR cleanup failed after 3 attempts.", expect.objectContaining({ path: "settings/old.png" }));
+  });
 });

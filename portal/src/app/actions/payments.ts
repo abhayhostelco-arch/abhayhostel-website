@@ -115,6 +115,11 @@ export async function updatePaymentSettingsAction(_previous: ActionState, formDa
       updateSettings: () => save(newPath),
     });
     if (!result.ok) return { status: "error", message: "The QR code could not be saved. Existing settings were retained." };
+    if (result.previousQrCleanupFailed) {
+      revalidatePath("/admin/settings");
+      revalidatePaymentPages();
+      return { status: "success", message: "Payment settings saved. The previous QR could not be removed automatically; it was logged for follow-up." };
+    }
   }
   revalidatePath("/admin/settings");
   revalidatePaymentPages();

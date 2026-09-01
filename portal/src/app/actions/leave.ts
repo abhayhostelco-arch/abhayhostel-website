@@ -7,7 +7,7 @@ import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getServerEnv } from "@/lib/env";
-import { deliverLeaveNotification, deliverLeaveNotifications } from "@/lib/leave-notifications";
+import { deliverLeaveNotification } from "@/lib/leave-notifications";
 import { isMissingSchemaError } from "@/lib/schema-compat";
 import { canWithdrawLeaveRequest } from "@/lib/date";
 import { removeLeaveAttachment } from "@/lib/leave-attachments";
@@ -153,7 +153,7 @@ export async function retryLeaveNotificationAction(_previous: ActionState, formD
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("retry_leave_notification", { p_actor_uuid: profile.id, p_notification_uuid: parsed.data });
   if (error || data !== true) return { status: "error", message: "The email notification could not be retried." };
-  await deliverLeaveNotifications(admin, randomUUID(), getServerEnv().NEXT_PUBLIC_APP_URL);
+  await deliverLeaveNotification(admin, randomUUID(), parsed.data, getServerEnv().NEXT_PUBLIC_APP_URL);
   revalidateLeavePages();
   return { status: "success", message: "Email retry queued." };
 }

@@ -62,6 +62,15 @@ describe("report group filtering", () => {
     expect(mocks.getEntries).toHaveBeenCalledWith(expect.objectContaining({ studentIds: [krishna.id] }));
   });
 
+  it("audits the number of CSV data rows rather than expanded scoring fetch rows", async () => {
+    const response = await GET(new Request("https://portal.example/api/reports/export?range=7"));
+
+    expect(response.status).toBe(200);
+    expect(mocks.insertAudit).toHaveBeenCalledWith(expect.objectContaining({
+      metadata: expect.objectContaining({ row_count: "14" }),
+    }));
+  });
+
   it("renders the selected group in the report controls and export URL", async () => {
     const page = await ReportsPage({ searchParams: Promise.resolve({ range: "7", group: "krishna_home" }) });
     const html = renderToStaticMarkup(<ThemeProvider>{page}</ThemeProvider>);

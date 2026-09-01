@@ -55,4 +55,16 @@ describe("Student group administration controls", () => {
     expect(group).toHaveValue("krishna_home");
     expect(screen.getByRole("button", { name: "Reactivate" })).toBeInTheDocument();
   });
+
+  it("shows a Mentor the stored group as read-only during reactivation", async () => {
+    const componentPath = "@/components/student-reactivation-form";
+    const componentModule = await import(/* @vite-ignore */ componentPath).catch(() => null) as typeof import("@/components/student-reactivation-form") | null;
+    expect(componentModule).not.toBeNull();
+    if (!componentModule) return;
+    render(<componentModule.StudentReactivationForm studentId="00000000-0000-4000-8000-000000000001" studentName="Inactive Student" studentGroup="krishna_home" canChangeGroup={false} />);
+
+    expect(screen.queryByRole("combobox", { name: "Group for Inactive Student" })).not.toBeInTheDocument();
+    expect(screen.getByText("Krishna Home")).toBeInTheDocument();
+    expect(document.querySelector('input[name="studentGroup"]')).toHaveValue("krishna_home");
+  });
 });

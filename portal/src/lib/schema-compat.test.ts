@@ -17,8 +17,12 @@ describe("optional schema compatibility", () => {
     expect(isMissingAvatarBucketError({ message: "File too large" })).toBe(false);
   });
 
-  it("recognizes only missing cleanup schema errors", () => {
-    expect(isMissingCleanupSchemaError({ code: "PGRST202", message: "function not found" })).toBe(true);
+  it("recognizes PGRST202 only when it names a known feature RPC", () => {
+    expect(isMissingSchemaError({ code: "PGRST202", message: "Could not find function public.unrelated_rpc" })).toBe(false);
+    expect(isMissingSchemaError({ code: "PGRST202", message: "Could not find function public.unrelated_rpc in the schema cache" })).toBe(false);
+    expect(isMissingSchemaError({ code: "PGRST202", message: "Could not find function public.update_student_group" }, ["update_student_group"])).toBe(true);
+    expect(isMissingCleanupSchemaError({ code: "PGRST202", message: "Could not find function public.unrelated_rpc" })).toBe(false);
+    expect(isMissingCleanupSchemaError({ code: "PGRST202", message: "Could not find function public.cleanup_update_auto" })).toBe(true);
     expect(isMissingCleanupSchemaError({ code: "42P01", message: "cleanup_runs does not exist" })).toBe(true);
     expect(isMissingCleanupSchemaError({ code: "42703", message: "deletion_pending_at does not exist" })).toBe(true);
     expect(isMissingCleanupSchemaError({ code: "23505", message: "duplicate key" })).toBe(false);

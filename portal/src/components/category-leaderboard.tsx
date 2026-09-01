@@ -6,7 +6,7 @@ import { groupGrowthStudents, leaderboardPlacement, type LeaderboardCategory } f
 
 const categories: Array<{ id: LeaderboardCategory; label: string }> = [
   { id: "overall", label: "Overall" }, { id: "sadhana", label: "Sadhana" },
-  { id: "study", label: "Study" }, { id: "discipline", label: "Discipline" }, { id: "seva", label: "Seva" },
+  { id: "study", label: "Study" }, { id: "discipline", label: "Discipline (0–50)" }, { id: "seva", label: "Seva" },
 ];
 
 export function CategoryLeaderboard({ students, currentStudentId }: { students: StudentGrowthReport[]; currentStudentId?: string }) {
@@ -26,14 +26,15 @@ export function CategoryLeaderboard({ students, currentStudentId }: { students: 
     <div id={`${tabsetId}-panel`} className="group-scoreboards" role="tabpanel" aria-labelledby={`${tabsetId}-${category}-tab`}>
       {groups.map((group) => {
         const { leaders, current } = leaderboardPlacement(group.students, category, currentStudentId);
+        const maximum = category === "discipline" ? 50 : 100;
         return <section className="group-scoreboard" key={group.value}><h3>{group.label}</h3>{group.students.length ? <><div className="leaderboard-chart">
           {leaders.map((student) => <div className={`leaderboard-bar-row ${student.studentId === currentStudentId ? "is-current" : ""}`} key={student.studentId}>
             <strong className="leaderboard-rank">#{student.categoryRank}</strong>
             <span className="leaderboard-name" title={student.studentName}>{student.studentName}{student.studentId === currentStudentId ? " (You)" : ""}</span>
-            <span className="leaderboard-bar-track" aria-hidden="true"><span style={{ width: `${student.categoryScore}%` }} /></span>
+            <span className="leaderboard-bar-track" aria-hidden="true"><span style={{ width: `${Math.min(student.categoryScore / maximum * 100, 100)}%` }} /></span>
             <strong className="leaderboard-score">{student.categoryScore}</strong>
           </div>)}
-        </div>{current ? <div className="own-rank-card"><span>Your position</span><strong>#{current.categoryRank} of {group.students.length} · {current.studentName}</strong><span>{current.categoryScore}/100</span></div> : null}</> : <div className="empty-state compact-empty"><strong>No Students</strong><p>No students in this group.</p></div>}</section>;
+        </div>{current ? <div className="own-rank-card"><span>Your position</span><strong>#{current.categoryRank} of {group.students.length} · {current.studentName}</strong><span>{current.categoryScore}/{maximum}</span></div> : null}</> : <div className="empty-state compact-empty"><strong>No Students</strong><p>No students in this group.</p></div>}</section>;
       })}
     </div>
   </div>;

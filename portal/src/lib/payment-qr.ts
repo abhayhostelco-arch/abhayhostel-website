@@ -1,4 +1,5 @@
 type StorageResult = { error: unknown | null };
+const previousQrCleanupAttempts = 3;
 
 function startsWith(bytes: Uint8Array, signature: number[]): boolean {
   return signature.every((value, index) => bytes[index] === value);
@@ -26,7 +27,7 @@ export async function replacePaymentQr({
   upload: (path: string, file: Blob, options: { contentType: string; upsert: false }) => Promise<StorageResult>;
   remove: (paths: string[]) => Promise<StorageResult>;
   updateSettings: () => PromiseLike<StorageResult>;
-}): Promise<{ ok: boolean }> {
+}): Promise<{ ok: boolean; previousQrCleanupFailed?: true }> {
   const uploaded = await upload(newPath, file, { contentType: file.type, upsert: false });
   if (uploaded.error) return { ok: false };
 
@@ -36,6 +37,19 @@ export async function replacePaymentQr({
     return { ok: false };
   }
 
-  if (oldPath && oldPath !== newPath) await remove([oldPath]);
+  if (oldPath && oldPath !== newPath) {
+    let cleanupError: unknown = null;
+    for (let attempt = 0; attempt < previousQrCleanupAttempts; attempt += 1) {
+      try {
+        const cleanup = await remove([oldPath]);
+        if (!cleanup.error) return { ok: true };
+        cleanupError = cleanup.error;
+      } catch (error) {
+        cleanupError = error;
+      }
+    }
+    console.error(`Previous payment QR cleanup failed after ${previousQrCleanupAttempts} attempts.`, { path: oldPath, error: cleanupError });
+    return { ok: true, previousQrCleanupFailed: true };
+  }
   return { ok: true };
 }

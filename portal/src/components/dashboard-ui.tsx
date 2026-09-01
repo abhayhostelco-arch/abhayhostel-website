@@ -58,10 +58,10 @@ export function DashboardPanel({
 }
 
 const scoreCategories = [
-  { key: "sadhana", label: "Sadhana Score", icon: Sparkles, tone: "green" },
-  { key: "study", label: "Study Score", icon: BookOpen, tone: "blue" },
-  { key: "discipline", label: "Discipline Score", icon: MoonStar, tone: "orange" },
-  { key: "seva", label: "Seva & Character", icon: HeartHandshake, tone: "purple" },
+  { key: "sadhana", label: "Sadhana Score", maximum: 100, icon: Sparkles, tone: "green" },
+  { key: "study", label: "Study Score", maximum: 100, icon: BookOpen, tone: "blue" },
+  { key: "discipline", label: "Discipline Score (0–50)", maximum: 50, icon: MoonStar, tone: "orange" },
+  { key: "seva", label: "Seva & Character", maximum: 100, icon: HeartHandshake, tone: "purple" },
 ] as const;
 
 export function ScoreOverview({ scores }: { scores: GrowthBreakdown }) {
@@ -78,10 +78,10 @@ export function ScoreOverview({ scores }: { scores: GrowthBreakdown }) {
         <div><strong>{values.overall}</strong><span>/100</span><small>{quality}</small></div>
       </div>
       <div className="score-category-list">
-        {scoreCategories.map(({ key, label, icon: Icon, tone }) => (
+        {scoreCategories.map(({ key, label, maximum, icon: Icon, tone }) => (
           <div className={`score-category score-category-${tone}`} key={key}>
-            <div><span><Icon size={15} aria-hidden="true" /> {label}</span><strong>{values[key]}/100</strong></div>
-            <span className="score-category-track" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={values[key]}><i style={{ width: `${values[key]}%` }} /></span>
+            <div><span><Icon size={15} aria-hidden="true" /> {label}</span><strong>{values[key]}/{maximum}</strong></div>
+            <span className="score-category-track" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={maximum} aria-valuenow={values[key]}><i style={{ width: `${Math.min(values[key] / maximum * 100, 100)}%` }} /></span>
           </div>
         ))}
       </div>

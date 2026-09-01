@@ -203,7 +203,7 @@ export async function createAccountAction(
         const recovery = await recoverFailedStudentReactivation(admin, existing.id);
         if (recovery === "already_active") return { status: "error", message: concurrentReactivationMessage };
         if (recovery === "recovery_failed") return { status: "error", message: manualRecoveryMessage };
-        return { status: "error", message: isMissingSchemaError(reactivationError) ? studentGroupMigrationMessage : "The Student could not be reactivated. The login remains disabled." };
+        return { status: "error", message: isMissingSchemaError(reactivationError, ["reactivate_student_profile"]) ? studentGroupMigrationMessage : "The Student could not be reactivated. The login remains disabled." };
       }
     } else {
       const { error: profileError } = await admin
@@ -260,7 +260,7 @@ export async function createAccountAction(
     const { error: groupError } = await updateStudentGroup(actor.id, data.user.id, parsed.data.studentGroup);
     if (groupError) {
       if (!await quarantineCreatedAccount(admin, data.user.id)) return { status: "error", message: manualRecoveryMessage };
-      return { status: "error", message: isMissingSchemaError(groupError) ? studentGroupMigrationMessage : "The Student group could not be initialized." };
+      return { status: "error", message: isMissingSchemaError(groupError, ["update_student_group"]) ? studentGroupMigrationMessage : "The Student group could not be initialized." };
     }
   }
 
@@ -291,7 +291,7 @@ export async function updateStudentGroupAction(
   if (!target || target.role !== "student") return { status: "error", message: "This Student cannot be updated." };
 
   const { error } = await updateStudentGroup(actor.id, target.id, parsed.data.studentGroup);
-  if (isMissingSchemaError(error)) return { status: "error", message: studentGroupMigrationMessage };
+  if (isMissingSchemaError(error, ["update_student_group"])) return { status: "error", message: studentGroupMigrationMessage };
   if (error) return { status: "error", message: "The Student group could not be saved." };
   revalidatePath("/admin/students");
   revalidatePath(`/admin/students/${target.id}`);
@@ -328,7 +328,7 @@ export async function reactivateStudentAction(
     const recovery = await recoverFailedStudentReactivation(admin, target.id);
     if (recovery === "already_active") return { status: "error", message: concurrentReactivationMessage };
     if (recovery === "recovery_failed") return { status: "error", message: manualRecoveryMessage };
-    return { status: "error", message: isMissingSchemaError(reactivationError) ? studentGroupMigrationMessage : "The Student could not be reactivated. The login remains disabled." };
+    return { status: "error", message: isMissingSchemaError(reactivationError, ["reactivate_student_profile"]) ? studentGroupMigrationMessage : "The Student could not be reactivated. The login remains disabled." };
   }
   revalidatePath("/admin/students");
   revalidatePath("/mentor/students");

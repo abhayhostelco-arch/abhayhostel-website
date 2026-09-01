@@ -63,9 +63,15 @@ describe("leave decision server actions", () => {
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
   });
 
-  it("allows only Super Admins to retry a failed notification", async () => {
+  it("retries only the selected failed notification without claiming the global batch", async () => {
     mocks.rpc.mockReset();
-    mocks.rpc.mockResolvedValueOnce({ data: true, error: null }).mockResolvedValueOnce({ data: [], error: null });
+    mocks.rpc.mockResolvedValueOnce({ data: true, error: null })
+      .mockResolvedValueOnce({ data: {
+        id: notificationId, leave_request_id: requestId, decision_version: 1, recipient_email: "student@example.com",
+        student_name: "Asha", leave_start_date: "2026-09-10", leave_end_date: "2026-09-12", decision: "approved",
+        decision_note: null, idempotency_key: "leave-decision:2:1", lease_token: "00000000-0000-4000-8000-000000000004",
+      }, error: null })
+      .mockResolvedValueOnce({ data: true, error: null });
     const form = new FormData(); form.set("notificationId", notificationId);
     const actions = await loadActions();
 
@@ -74,5 +80,7 @@ describe("leave decision server actions", () => {
     expect(result).toEqual({ status: "success", message: "Email retry queued." });
     expect(mocks.requireProfile).toHaveBeenCalledWith(["super_admin"]);
     expect(mocks.rpc).toHaveBeenNthCalledWith(1, "retry_leave_notification", { p_actor_uuid: admin.id, p_notification_uuid: notificationId });
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2, "claim_leave_notification", expect.objectContaining({ p_notification_uuid: notificationId }));
+    expect(mocks.rpc).not.toHaveBeenCalledWith("claim_leave_notification_batch", expect.anything());
   });
 });

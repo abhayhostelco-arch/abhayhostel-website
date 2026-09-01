@@ -21,6 +21,6 @@ export async function GET(request: Request) {
   const students = groupStudents.filter((student) => !parsed.data.studentId || student.id === parsed.data.studentId);
   const entries = await getEntries({ startDate: daysAgoInIndia(range - 1), studentIds: students.map((student) => student.id), completeScoringWeeks: true });
   const rows = buildReportRows(entries, students, settings, range);
-  await createAdminClient().from("audit_events").insert({ actor_id: profile.id, action: "report_exported", target_id: parsed.data.studentId ?? null, metadata: { range_days: String(range), row_count: String(entries.length), ...(parsed.data.group ? { student_group: parsed.data.group } : {}) } });
+  await createAdminClient().from("audit_events").insert({ actor_id: profile.id, action: "report_exported", target_id: parsed.data.studentId ?? null, metadata: { range_days: String(range), row_count: String(Math.max(rows.length - 1, 0)), ...(parsed.data.group ? { student_group: parsed.data.group } : {}) } });
   return new NextResponse(toCsv(rows), { status: 200, headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="abhay-hostel-report-${range}d.csv"`, "Cache-Control": "private, no-store, max-age=0", "X-Content-Type-Options": "nosniff" } });
 }

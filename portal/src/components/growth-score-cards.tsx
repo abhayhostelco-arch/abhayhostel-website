@@ -10,7 +10,7 @@ export function GrowthScoreCards({ scores }: { scores: GrowthBreakdown }) {
       <DashboardMetric label="Overall Growth" value={`${value.overall}/100`} detail="Combined Score" icon={Medal} tone="purple" />
       <DashboardMetric label="Sadhana" value={`${value.sadhana}/100`} detail="Morning Routine" icon={Sparkles} tone="green" />
       <DashboardMetric label="Study" value={`${value.study}/100`} detail="Study & Class" icon={BookOpen} tone="blue" />
-      <DashboardMetric label="Discipline" value={`${value.discipline}/100`} detail="Sleep & Wake" icon={MoonStar} tone="orange" />
+      <DashboardMetric label="Discipline" value={`${value.discipline}/50`} detail="Sleep & Wake · fixed 50-point rubric" icon={MoonStar} tone="orange" />
       <DashboardMetric label="Seva & Character" value={`${value.seva}/100`} detail="Service Minutes" icon={HeartHandshake} tone="rose" />
     </div>
   );

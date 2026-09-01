@@ -11,7 +11,7 @@ export function buildReportRows(entries: DailyEntry[], students: Profile[], sett
     "Student", "Email", "Group", "Academy / class", "Date", "Submission status", "Sleep time", "Wake time",
     "Sleep minutes", "Study minutes", "Chanting rounds", "Morning Arati", "Gita class status",
     "Evening reading minutes", "Class attended", "Seva minutes", "Sadhana score", "Study score",
-    "Discipline score", "Seva & Character score", "Overall Growth Score", "Note", "Created at", "Updated at",
+    "Discipline score (0–50)", "Seva & Character score", "Overall Growth Score", "Note", "Created at", "Updated at",
   ]];
 
   for (const report of growth.students) {
