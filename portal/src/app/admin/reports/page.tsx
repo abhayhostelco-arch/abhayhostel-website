@@ -70,7 +70,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       </section>
       <section className="panel section-gap"><div className="panel-title"><h2>Growth Score</h2><span>Missing entries score zero</span></div><GrowthScoreCards scores={selectedGrowth} /></section>
       <section className="content-grid"><article className="panel"><div className="panel-title"><h2>Overall score trend</h2></div><OverallGrowthChart data={growthChartData} /></article><article className="panel"><div className="panel-title"><h2>Category comparison</h2></div><CategoryGrowthChart scores={selectedGrowth} /></article></section>
-      <section className="panel section-gap"><div className="panel-title"><h2>{range}-day leaderboard</h2></div><GrowthLeaderboard students={growthReport.students} /></section>
+      <section className="panel section-gap"><div className="panel-title"><h2>{range}-day scoreboards</h2><span>Top 10 per group</span></div><GrowthLeaderboard students={growthReport.students} /></section>
       <p className="security-note section-gap">“Seva &amp; Character” is calculated from self-reported seva minutes; it is not a subjective character assessment.</p>
       <section className="content-grid">
         <article className="panel"><div className="panel-title"><h2>Routine trend</h2></div><TrendChart data={chartData} /></article>

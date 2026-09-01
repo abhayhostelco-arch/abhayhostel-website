@@ -72,4 +72,13 @@ describe("report group filtering", () => {
     expect(html).toContain("Krishna Student");
     expect(html).not.toContain("Abhay Student");
   });
+
+  it("renders separate group report leaderboards with no combined position", async () => {
+    const page = await ReportsPage({ searchParams: Promise.resolve({ range: "7" }) });
+    const html = renderToStaticMarkup(<ThemeProvider>{page}</ThemeProvider>);
+
+    expect(html).toContain("<h3>Abhay Hostel</h3>");
+    expect(html).toContain("<h3>Krishna Home</h3>");
+    expect(html.match(/<strong>#1<\/strong>/g)).toHaveLength(2);
+  });
 });

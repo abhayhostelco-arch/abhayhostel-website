@@ -1,18 +1,34 @@
-import type { StudentGrowthReport } from "@/lib/growth-score";
+import { compareGrowthStudents, type StudentGrowthReport } from "@/lib/growth-score";
+import { studentGroupOptions } from "@/lib/student-groups";
 
 export type LeaderboardCategory = "overall" | "sadhana" | "study" | "discipline" | "seva";
 export type RankedGrowthStudent = StudentGrowthReport & { categoryRank: number; categoryScore: number };
+
+export function groupGrowthStudents(students: StudentGrowthReport[]) {
+  return studentGroupOptions.map((group) => ({
+    ...group,
+    students: students.filter((student) => student.studentGroup === group.value),
+  })).filter((group) => group.students.length > 0);
+}
 
 export function rankByCategory(
   students: StudentGrowthReport[],
   category: LeaderboardCategory,
 ): RankedGrowthStudent[] {
   const sorted = [...students].sort((a, b) =>
-    Math.round(b[category]) - Math.round(a[category]) || a.studentName.localeCompare(b.studentName, undefined, { sensitivity: "base" }),
+    (a.studentGroup === "abhay_hostel" ? 0 : a.studentGroup === "krishna_home" ? 1 : 2)
+      - (b.studentGroup === "abhay_hostel" ? 0 : b.studentGroup === "krishna_home" ? 1 : 2)
+      || compareGrowthStudents(a, b, a[category], b[category]),
   );
-  return sorted.map((student, index) => {
+  let rankedGroup = sorted[0]?.studentGroup;
+  let groupRank = 0;
+  return sorted.map((student) => {
+    if (student.studentGroup !== rankedGroup) {
+      rankedGroup = student.studentGroup;
+      groupRank = 0;
+    }
     const categoryScore = Math.round(student[category]);
-    const categoryRank = index + 1;
+    const categoryRank = ++groupRank;
     return { ...student, categoryRank, categoryScore };
   });
 }

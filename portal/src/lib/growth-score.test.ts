@@ -12,7 +12,7 @@ const settings: ScoreSettings = {
 const student = (id: string, name: string, overrides: Partial<Profile> = {}): Profile => ({
   id, role: "student", full_name: name, email: `${name.toLowerCase()}@example.com`, phone: null,
   academy_label: null, joined_on: "2026-01-01", is_active: true, must_change_password: false,
-  created_by: null, mentor_id: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
+  created_by: null, mentor_id: null, student_group: "abhay_hostel", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
   ...overrides,
 });
 
@@ -125,12 +125,38 @@ describe("Growth Score reporting", () => {
     expect(report.students[0].submittedDays).toBe(1);
   });
 
-  it("uses unique ranks and alphabetical ordering for displayed-score ties while excluding inactive students", () => {
+  it("uses unique same-group ranks with case-insensitive name and student-ID tiebreaks", () => {
     const inactive = { ...student("c", "Charlie"), is_active: false };
-    const report = buildGrowthReport([student("a", "Alpha"), student("b", "Beta"), inactive], [entry("a"), entry("b")], { ...settings, score_start_date: "2026-08-22" }, 1, new Date("2026-08-22T06:30:00Z"));
-    expect(report.students.map((value) => value.rank)).toEqual([1, 2]);
-    expect(report.students.map((value) => value.studentName)).toEqual(["Alpha", "Beta"]);
+    const report = buildGrowthReport(
+      [student("b", "alpha"), student("a", "Alpha"), student("d", "Beta"), inactive],
+      [entry("a"), entry("b"), entry("d")],
+      { ...settings, score_start_date: "2026-08-22" }, 1, new Date("2026-08-22T06:30:00Z"),
+    );
+
+    expect(report.students.map((value) => [value.studentId, value.rank])).toEqual([["a", 1], ["b", 2], ["d", 3]]);
     expect(report.students.map((value) => value.studentName)).not.toContain("Charlie");
+  });
+
+  it("partitions ranks by hostel group after receiving the audience cohort", () => {
+    const report = buildGrowthReport(
+      [
+        student("abhay-low", "Abhay Low", { student_group: "abhay_hostel" }),
+        student("krishna-high", "Krishna High", { student_group: "krishna_home" }),
+        student("abhay-high", "Abhay High", { student_group: "abhay_hostel" }),
+      ],
+      [
+        entry("abhay-low", { study_minutes: 100 }),
+        entry("krishna-high", { study_minutes: 360 }),
+        entry("abhay-high", { study_minutes: 200 }),
+      ],
+      { ...settings, score_start_date: "2026-08-22" }, 1, new Date("2026-08-22T06:30:00Z"),
+    );
+
+    expect(report.students.map((value) => [value.studentId, value.studentGroup, value.rank])).toEqual([
+      ["abhay-high", "abhay_hostel", 1],
+      ["abhay-low", "abhay_hostel", 2],
+      ["krishna-high", "krishna_home", 1],
+    ]);
   });
 
   it("orders distinct internal scores before presentation rounding", () => {

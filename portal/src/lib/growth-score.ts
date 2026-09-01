@@ -1,4 +1,4 @@
-import type { DailyEntry, Profile, ScoreSettings } from "@/lib/types";
+import type { DailyEntry, Profile, ScoreSettings, StudentGroup } from "@/lib/types";
 import { startOfIndiaWeek, todayInIndia } from "@/lib/date";
 import { timeToMinutes } from "@/lib/analytics";
 
@@ -18,6 +18,7 @@ export type DailyGrowthScore = GrowthBreakdown & {
 export type StudentGrowthReport = GrowthBreakdown & {
   studentId: string;
   studentName: string;
+  studentGroup: StudentGroup | null;
   eligibleDays: number;
   submittedDays: number;
   rank: number;
@@ -101,6 +102,19 @@ function laterDate(...dates: Array<string | null | undefined>): string {
 
 const zero = (): GrowthBreakdown => ({ sadhana: 0, study: 0, discipline: 0, seva: 0, overall: 0 });
 
+const studentGroupOrder = (group: StudentGroup | null) => group === "abhay_hostel" ? 0 : group === "krishna_home" ? 1 : 2;
+
+export function compareGrowthStudents(
+  a: Pick<StudentGrowthReport, "studentId" | "studentName">,
+  b: Pick<StudentGrowthReport, "studentId" | "studentName">,
+  aScore: number,
+  bScore: number,
+): number {
+  return bScore - aScore
+    || a.studentName.localeCompare(b.studentName, undefined, { sensitivity: "base" })
+    || a.studentId.localeCompare(b.studentId);
+}
+
 export function buildGrowthReport(
   students: Profile[],
   entries: DailyEntry[],
@@ -115,7 +129,7 @@ export function buildGrowthReport(
   const globalStart = rangeStart > settings.score_start_date ? rangeStart : settings.score_start_date;
   const allDates = listDates(globalStart, end);
   const entryMap = new Map(entries.map((entry) => [`${entry.student_id}:${entry.entry_date}`, entry]));
-  const reports = students.filter((student) => student.is_active).map((student) => {
+  const reports: StudentGrowthReport[] = students.filter((student) => student.is_active).map((student) => {
     const studentStart = student.joined_on && student.joined_on > globalStart ? student.joined_on : globalStart;
     const dates = allDates.filter((date) => date >= studentStart);
     const weekScores = new Map<string, number>();
@@ -147,6 +161,7 @@ export function buildGrowthReport(
     return {
       studentId: student.id,
       studentName: student.full_name,
+      studentGroup: student.student_group ?? null,
       eligibleDays: daily.length,
       submittedDays: daily.filter((day) => day.submitted).length,
       sadhana: sums.sadhana / divisor,
@@ -157,10 +172,16 @@ export function buildGrowthReport(
       rank: 0,
       daily,
     };
-  }).sort((a, b) => b.overall - a.overall || a.studentName.localeCompare(b.studentName, undefined, { sensitivity: "base" }));
+  }).sort((a, b) => studentGroupOrder(a.studentGroup) - studentGroupOrder(b.studentGroup) || compareGrowthStudents(a, b, a.overall, b.overall));
 
-  reports.forEach((report, index) => {
-    report.rank = index + 1;
+  let rankedGroup: StudentGroup | null | undefined;
+  let groupRank = 0;
+  reports.forEach((report) => {
+    if (report.studentGroup !== rankedGroup) {
+      rankedGroup = report.studentGroup;
+      groupRank = 0;
+    }
+    report.rank = ++groupRank;
   });
 
   const divisor = Math.max(reports.length, 1);

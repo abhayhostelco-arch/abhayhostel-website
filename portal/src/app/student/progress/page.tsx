@@ -6,6 +6,7 @@ import { requireProfile } from "@/lib/auth";
 import { daysAgoInIndia, displayDate } from "@/lib/date";
 import { getScoreSettings, getStudentLeaderboardSource } from "@/lib/data";
 import { buildGrowthReport, roundedScores } from "@/lib/growth-score";
+import { studentGroupLabel } from "@/lib/student-groups";
 
 export const metadata: Metadata = { title: "Growth progress" };
 
@@ -16,11 +17,12 @@ export default async function StudentProgressPage({ searchParams }: { searchPara
   const [settings, source] = await Promise.all([getScoreSettings(), getStudentLeaderboardSource(daysAgoInIndia(range - 1))]);
   const report = buildGrowthReport(source.students, source.entries, settings, range);
   const mine = report.students.find((student) => student.studentId === profile.id);
-  const scores = mine ?? { studentId: profile.id, studentName: profile.full_name, eligibleDays: 0, submittedDays: 0, rank: 0, daily: [], sadhana: 0, study: 0, discipline: 0, seva: 0, overall: 0 };
+  const ownGroupCount = report.students.filter((student) => student.studentGroup === profile.student_group).length;
+  const scores = mine ?? { studentId: profile.id, studentName: profile.full_name, studentGroup: profile.student_group ?? null, eligibleDays: 0, submittedDays: 0, rank: 0, daily: [], sadhana: 0, study: 0, discipline: 0, seva: 0, overall: 0 };
   const chartData = scores.daily.map((day) => ({ ...day, date: day.date.slice(5) }));
   return (
     <main className="page-container">
-      <header className="page-heading"><div><p className="eyebrow">Personal growth</p><h1>Progress report</h1><p>Your score reflects submitted routines from {displayDate(settings.score_start_date)} onward. Missing entries score zero.</p></div><span className="status-pill status-success">Rank #{scores.rank || "—"} of {report.students.length}</span></header>
+      <header className="page-heading"><div><p className="eyebrow">Personal growth</p><h1>Progress report</h1><p>Your score reflects submitted routines from {displayDate(settings.score_start_date)} onward. Missing entries score zero.</p></div><span className="status-pill status-success">Rank #{scores.rank || "—"} of {ownGroupCount} · {studentGroupLabel(profile.student_group)}</span></header>
       <section className="panel"><form className="filters" method="get"><div className="field"><label htmlFor="range">Range</label><select id="range" name="range" defaultValue={String(range)}><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option></select></div><button className="button button-secondary" type="submit">Update report</button></form></section>
       <section className="section-gap-small"><GrowthScoreCards scores={scores} /></section>
       <section className="content-grid">
