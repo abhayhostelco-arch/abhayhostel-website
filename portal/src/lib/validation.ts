@@ -169,6 +169,7 @@ export const alertSettingsSchema = z
 export const reportQuerySchema = z.object({
   range: z.enum(["7", "30", "90"]).default("30"),
   studentId: z.uuid().optional(),
+  group: studentGroupSchema.optional(),
 });
 
 const safeUrl = z.url().max(2048).refine((value) => ["http:", "https:"].includes(new URL(value).protocol), "Use an HTTP or HTTPS link.");

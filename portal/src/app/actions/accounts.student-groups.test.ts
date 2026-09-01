@@ -49,6 +49,7 @@ const student = {
 let profiles: Profile[];
 let schemaError: { code: string; message: string } | null;
 let profileUpdateError: { code: string; message: string } | null;
+let profileUpdateErrors: Array<{ code: string; message: string } | null>;
 let profileUpdates: Array<Record<string, unknown>>;
 let auditRows: Array<Record<string, unknown>>;
 
@@ -89,7 +90,7 @@ function profileBuilder() {
         const row = profiles.find((profile) => [...filters].every(([key, value]) => profile[key as keyof Profile] === value));
         if (row && !profileUpdateError) Object.assign(row, updateValues);
       }
-      return Promise.resolve({ error: profileUpdateError }).then(onfulfilled, onrejected);
+      return Promise.resolve({ error: profileUpdateErrors.length ? profileUpdateErrors.shift() ?? null : profileUpdateError }).then(onfulfilled, onrejected);
     },
   };
   return builder;
@@ -110,6 +111,7 @@ beforeEach(() => {
   profiles = [mentor];
   schemaError = null;
   profileUpdateError = null;
+  profileUpdateErrors = [];
   profileUpdates = [];
   auditRows = [];
   vi.clearAllMocks();
@@ -148,14 +150,13 @@ describe("Student group account actions", () => {
     expect(mocks.updateUserById).toHaveBeenCalledWith(student.id, expect.objectContaining({
       user_metadata: expect.objectContaining({ student_group: "krishna_home" }),
     }));
-    expect(mocks.rpc).toHaveBeenCalledWith("update_student_group", expect.objectContaining({
+    expect(mocks.rpc).toHaveBeenCalledWith("reactivate_student_profile", expect.objectContaining({
       p_student_uuid: student.id,
       p_student_group: "krishna_home",
+      p_restored_during_creation: true,
     }));
-    expect(auditRows).toContainEqual(expect.objectContaining({
-      action: "account_reactivated",
-      metadata: expect.objectContaining({ old_group: "abhay_hostel", new_group: "krishna_home" }),
-    }));
+    expect(profileUpdates).toContainEqual(expect.objectContaining({ is_active: false }));
+    expect(auditRows).not.toContainEqual(expect.objectContaining({ action: "account_reactivated" }));
   });
 
   it("stops before creating authentication state when the group column is unavailable", async () => {
@@ -226,10 +227,103 @@ describe("Student group account actions", () => {
     const result = await accountActions.reactivateStudentAction({ status: "idle" }, formData);
 
     expect(result).toEqual({ status: "success", message: "Student reactivated in Krishna Home." });
-    expect(mocks.rpc).toHaveBeenCalledWith("update_student_group", expect.objectContaining({
+    expect(mocks.rpc).toHaveBeenCalledWith("reactivate_student_profile", expect.objectContaining({
       p_student_uuid: student.id,
       p_student_group: "krishna_home",
+      p_restored_during_creation: false,
     }));
-    expect(profileUpdates).toContainEqual({ is_active: true });
+    expect(profileUpdates).not.toContainEqual({ is_active: true });
+    expect(auditRows).not.toContainEqual(expect.objectContaining({ action: "account_reactivated" }));
+  });
+
+  it("re-bans Auth when transactional directory reactivation fails", async () => {
+    profiles.push({ ...student });
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "XX000", message: "transaction failed" } });
+    const formData = new FormData();
+    formData.set("targetId", student.id);
+    formData.set("studentGroup", "krishna_home");
+
+    const result = await accountActions.reactivateStudentAction({ status: "idle" }, formData);
+
+    expect(result).toEqual({ status: "error", message: "The Student could not be reactivated. The login remains disabled." });
+    expect(mocks.updateUserById).toHaveBeenNthCalledWith(1, student.id, { ban_duration: "none" });
+    expect(mocks.updateUserById).toHaveBeenNthCalledWith(2, student.id, { ban_duration: "876000h" });
+  });
+
+  it("reports manual recovery when Auth re-ban fails after transactional reactivation failure", async () => {
+    profiles.push({ ...student });
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "XX000", message: "transaction failed" } });
+    mocks.updateUserById.mockResolvedValueOnce({ error: null }).mockResolvedValueOnce({ error: { message: "re-ban failed" } });
+    const formData = new FormData();
+    formData.set("targetId", student.id);
+    formData.set("studentGroup", "krishna_home");
+
+    const result = await accountActions.reactivateStudentAction({ status: "idle" }, formData);
+
+    expect(result).toEqual({ status: "error", message: "Automatic account recovery failed. Manually disable the Auth login and portal profile before retrying." });
+  });
+
+  it("reports manual recovery when creation-restoration cannot re-ban Auth after RPC failure", async () => {
+    profiles.push({ ...student });
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "XX000", message: "transaction failed" } });
+    mocks.updateUserById.mockResolvedValueOnce({ error: null }).mockResolvedValueOnce({ error: { message: "re-ban failed" } });
+
+    const result = await accountActions.createAccountAction({ status: "idle" }, studentForm("krishna_home", student.email));
+
+    expect(result).toEqual({ status: "error", message: "Automatic account recovery failed. Manually disable the Auth login and portal profile before retrying." });
+    expect(mocks.rpc).toHaveBeenCalledWith("reactivate_student_profile", expect.objectContaining({ p_restored_during_creation: true }));
+  });
+
+  it("checks both quarantine writes after a new-account group RPC failure", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "XX000", message: "group failed" } });
+    profileUpdateErrors = [null, { code: "XX000", message: "deactivation failed" }];
+    mocks.updateUserById.mockResolvedValue({ error: { message: "ban failed" } });
+
+    const result = await accountActions.createAccountAction({ status: "idle" }, studentForm("krishna_home"));
+
+    expect(result).toEqual({ status: "error", message: "Automatic account recovery failed. Manually disable the Auth login and portal profile before retrying." });
+    expect(profileUpdates).toContainEqual({ is_active: false });
+    expect(mocks.updateUserById).toHaveBeenCalledWith(student.id, { ban_duration: "876000h" });
+  });
+
+  it("keeps a primary new-account group failure distinct when quarantine succeeds", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "XX000", message: "group failed" } });
+
+    const result = await accountActions.createAccountAction({ status: "idle" }, studentForm("krishna_home"));
+
+    expect(result).toEqual({ status: "error", message: "The Student group could not be initialized." });
+    expect(profileUpdates).toContainEqual({ is_active: false });
+    expect(mocks.updateUserById).toHaveBeenCalledWith(student.id, { ban_duration: "876000h" });
+  });
+
+  it("allows an assigned Mentor to reactivate only in the stored group", async () => {
+    const assignedMentor = { ...mentor };
+    mocks.requireProfile.mockResolvedValue(assignedMentor);
+    profiles.push({ ...student, mentor_id: assignedMentor.id });
+    const formData = new FormData();
+    formData.set("targetId", student.id);
+    formData.set("studentGroup", "abhay_hostel");
+
+    const result = await accountActions.reactivateStudentAction({ status: "idle" }, formData);
+
+    expect(result.status).toBe("success");
+    expect(mocks.rpc).toHaveBeenCalledWith("reactivate_student_profile", expect.objectContaining({ p_actor_uuid: assignedMentor.id, p_student_group: "abhay_hostel" }));
+  });
+
+  it("does not let a Mentor change the stored group or reactivate an unassigned Student", async () => {
+    mocks.requireProfile.mockResolvedValue(mentor);
+    profiles.push({ ...student, mentor_id: mentor.id });
+    const change = new FormData();
+    change.set("targetId", student.id);
+    change.set("studentGroup", "krishna_home");
+
+    await expect(accountActions.reactivateStudentAction({ status: "idle" }, change)).resolves.toEqual({ status: "error", message: "Only a Super Admin can change a Student group." });
+    expect(mocks.updateUserById).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
+
+    profiles.splice(1, 1, { ...student, mentor_id: actor.id });
+    change.set("studentGroup", "abhay_hostel");
+    await expect(accountActions.reactivateStudentAction({ status: "idle" }, change)).resolves.toEqual({ status: "error", message: "This Student cannot be reactivated." });
+    expect(mocks.updateUserById).not.toHaveBeenCalled();
   });
 });

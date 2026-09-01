@@ -84,4 +84,17 @@ describe("student groups, payments, and notifications migration safety", () => {
       "grant update ( role, full_name, email, phone, academy_label, joined_on, is_active, must_change_password, created_by, mentor_id, birth_date, avatar_path, deletion_pending_at ) on table public.profiles to service_role;",
     );
   });
+
+  it("reactivates Student group, active state, and audit through one locked service RPC", () => {
+    expect(normalized).toContain("create function public.reactivate_student_profile(");
+    const body = normalized.match(/create function public\.reactivate_student_profile\([\s\S]+?\$\$;/)?.[0] ?? "";
+    expect(body).toContain("for update");
+    expect(body).toContain("set student_group = p_student_group, is_active = true");
+    expect(body).toContain("'account_reactivated'");
+    expect(body).toContain("'old_group', previous_group");
+    expect(body).toContain("'new_group', p_student_group");
+    expect(body).toContain("assigned_mentor is distinct from p_actor_uuid");
+    expect(body).toContain("previous_group is distinct from p_student_group");
+    expect(normalized).toContain("grant execute on function public.reactivate_student_profile(uuid, uuid, public.student_group, boolean) to service_role;");
+  });
 });

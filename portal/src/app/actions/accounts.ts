@@ -19,6 +19,7 @@ import {
 } from "@/lib/validation";
 
 const studentGroupMigrationMessage = "Student groups are unavailable until the student group migration is applied.";
+const manualRecoveryMessage = "Automatic account recovery failed. Manually disable the Auth login and portal profile before retrying.";
 
 async function audit(
   actorId: string,
@@ -61,6 +62,31 @@ async function updateStudentGroup(actorId: string, studentId: string, studentGro
     p_student_uuid: studentId,
     p_student_group: studentGroup,
   });
+}
+
+async function reactivateStudentProfile(
+  actorId: string,
+  studentId: string,
+  studentGroup: StudentGroup,
+  restoredDuringCreation: boolean,
+) {
+  return createAdminClient().rpc("reactivate_student_profile", {
+    p_actor_uuid: actorId,
+    p_student_uuid: studentId,
+    p_student_group: studentGroup,
+    p_restored_during_creation: restoredDuringCreation,
+  });
+}
+
+async function rebanAuth(admin: ReturnType<typeof createAdminClient>, accountId: string): Promise<boolean> {
+  const { error } = await admin.auth.admin.updateUserById(accountId, { ban_duration: "876000h" });
+  return !error;
+}
+
+async function quarantineCreatedAccount(admin: ReturnType<typeof createAdminClient>, accountId: string): Promise<boolean> {
+  const { error: profileError } = await admin.from("profiles").update({ is_active: false }).eq("id", accountId);
+  const authRecovered = await rebanAuth(admin, accountId);
+  return !profileError && authRecovered;
 }
 
 export async function createAccountAction(
@@ -140,6 +166,16 @@ export async function createAccountAction(
     if (parsed.data.role === "student" && !existing.student_group) {
       return { status: "error", message: studentGroupMigrationMessage };
     }
+    if (parsed.data.role === "student") {
+      const { error: profileError } = await admin
+        .from("profiles")
+        .update({ ...profileValues, is_active: false })
+        .eq("id", existing.id)
+        .eq("is_active", false);
+      if (profileError) {
+        return { status: "error", message: "The inactive Student profile could not be updated. The login remains disabled." };
+      }
+    }
     const { error: authError } = await admin.auth.admin.updateUserById(existing.id, {
       password,
       ban_duration: "none",
@@ -149,28 +185,24 @@ export async function createAccountAction(
     if (authError) {
       return { status: "error", message: "The account exists, but its login could not be reactivated. Try Reactivate from the account directory." };
     }
-    const oldGroup = existing.student_group;
     if (parsed.data.role === "student") {
-      const { error: groupError } = await updateStudentGroup(actor.id, existing.id, parsed.data.studentGroup);
-      if (groupError) {
-        await admin.auth.admin.updateUserById(existing.id, { ban_duration: "876000h" });
-        return { status: "error", message: isMissingSchemaError(groupError) ? studentGroupMigrationMessage : "The Student group could not be saved. The account remains inactive." };
+      const { error: reactivationError } = await reactivateStudentProfile(actor.id, existing.id, parsed.data.studentGroup, true);
+      if (reactivationError) {
+        if (!await rebanAuth(admin, existing.id)) return { status: "error", message: manualRecoveryMessage };
+        return { status: "error", message: isMissingSchemaError(reactivationError) ? studentGroupMigrationMessage : "The Student could not be reactivated. The login remains disabled." };
       }
+    } else {
+      const { error: profileError } = await admin
+        .from("profiles")
+        .update(profileValues)
+        .eq("id", existing.id)
+        .eq("is_active", false);
+      if (profileError) {
+        if (!await rebanAuth(admin, existing.id)) return { status: "error", message: manualRecoveryMessage };
+        return { status: "error", message: "The login was restored, but its portal profile could not be updated. The account remains inactive." };
+      }
+      await audit(actor.id, "account_reactivated", existing.id, { role: parsed.data.role, restored_during_creation: true });
     }
-    const { error: profileError } = await admin
-      .from("profiles")
-      .update(profileValues)
-      .eq("id", existing.id)
-      .eq("is_active", false);
-    if (profileError) {
-      await admin.auth.admin.updateUserById(existing.id, { ban_duration: "876000h" });
-      return { status: "error", message: "The login was restored, but its portal profile could not be updated. The account remains inactive." };
-    }
-    await audit(actor.id, "account_reactivated", existing.id, {
-      role: parsed.data.role,
-      restored_during_creation: true,
-      ...(parsed.data.role === "student" && oldGroup ? { old_group: oldGroup, new_group: parsed.data.studentGroup } : {}),
-    });
     revalidatePath("/admin/students");
     revalidatePath("/admin/administrators");
     return {
@@ -206,15 +238,14 @@ export async function createAccountAction(
     .update(profileValues)
     .eq("id", data.user.id);
   if (profileError) {
-    await admin.auth.admin.updateUserById(data.user.id, { ban_duration: "876000h" });
+    if (!await quarantineCreatedAccount(admin, data.user.id)) return { status: "error", message: manualRecoveryMessage };
     return { status: "error", message: "The account could not be initialized." };
   }
 
   if (parsed.data.role === "student") {
     const { error: groupError } = await updateStudentGroup(actor.id, data.user.id, parsed.data.studentGroup);
     if (groupError) {
-      await admin.from("profiles").update({ is_active: false }).eq("id", data.user.id);
-      await admin.auth.admin.updateUserById(data.user.id, { ban_duration: "876000h" });
+      if (!await quarantineCreatedAccount(admin, data.user.id)) return { status: "error", message: manualRecoveryMessage };
       return { status: "error", message: isMissingSchemaError(groupError) ? studentGroupMigrationMessage : "The Student group could not be initialized." };
     }
   }
@@ -278,23 +309,11 @@ export async function reactivateStudentAction(
   const admin = createAdminClient();
   const { error: authError } = await admin.auth.admin.updateUserById(target.id, { ban_duration: "none" });
   if (authError) return { status: "error", message: "The Student login could not be reactivated." };
-  if (actor.role === "super_admin") {
-    const { error: groupError } = await updateStudentGroup(actor.id, target.id, parsed.data.studentGroup);
-    if (groupError) {
-      await admin.auth.admin.updateUserById(target.id, { ban_duration: "876000h" });
-      return { status: "error", message: isMissingSchemaError(groupError) ? studentGroupMigrationMessage : "The Student group could not be saved. The account remains inactive." };
-    }
+  const { error: reactivationError } = await reactivateStudentProfile(actor.id, target.id, parsed.data.studentGroup, false);
+  if (reactivationError) {
+    if (!await rebanAuth(admin, target.id)) return { status: "error", message: manualRecoveryMessage };
+    return { status: "error", message: isMissingSchemaError(reactivationError) ? studentGroupMigrationMessage : "The Student could not be reactivated. The login remains disabled." };
   }
-  const { error: profileError } = await admin.from("profiles").update({ is_active: true }).eq("id", target.id).eq("role", "student");
-  if (profileError) {
-    await admin.auth.admin.updateUserById(target.id, { ban_duration: "876000h" });
-    return { status: "error", message: "The Student profile could not be reactivated." };
-  }
-  await audit(actor.id, "account_reactivated", target.id, {
-    role: "student",
-    old_group: target.student_group,
-    new_group: parsed.data.studentGroup,
-  });
   revalidatePath("/admin/students");
   revalidatePath("/mentor/students");
   return { status: "success", message: `Student reactivated in ${studentGroupLabel(parsed.data.studentGroup)}.` };

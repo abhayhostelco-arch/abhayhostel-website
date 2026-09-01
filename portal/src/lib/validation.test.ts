@@ -167,6 +167,8 @@ describe("settings and report input", () => {
     expect(reportQuerySchema.parse({ range: "90" }).range).toBe("90");
     expect(reportQuerySchema.safeParse({ range: "365" }).success).toBe(false);
     expect(reportQuerySchema.safeParse({ range: "30", studentId: "x' OR 1=1--" }).success).toBe(false);
+    expect(reportQuerySchema.parse({ range: "30", group: "krishna_home" }).group).toBe("krishna_home");
+    expect(reportQuerySchema.safeParse({ range: "30", group: "other" }).success).toBe(false);
   });
 
   it("requires Growth Score category weights to total 100", () => {

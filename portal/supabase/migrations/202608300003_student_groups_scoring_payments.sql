@@ -265,6 +265,74 @@ begin
 end;
 $$;
 
+create function public.reactivate_student_profile(
+  p_actor_uuid uuid,
+  p_student_uuid uuid,
+  p_student_group public.student_group,
+  p_restored_during_creation boolean
+)
+returns public.profiles
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  actor_role public.app_role;
+  previous_group public.student_group;
+  assigned_mentor uuid;
+  was_active boolean;
+  result public.profiles%rowtype;
+begin
+  select role
+  into actor_role
+  from public.profiles
+  where id = p_actor_uuid and is_active;
+
+  if not found or actor_role not in ('super_admin', 'admin') then
+    raise exception 'reactivation actor is not authorized' using errcode = '42501';
+  end if;
+
+  select student_group, mentor_id, is_active
+  into previous_group, assigned_mentor, was_active
+  from public.profiles student
+  where student.id = p_student_uuid and student.role = 'student'
+  for update;
+
+  if not found then
+    raise exception 'student profile not found' using errcode = '22023';
+  end if;
+  if was_active then
+    raise exception 'student profile is already active' using errcode = '22023';
+  end if;
+  if actor_role = 'admin' and assigned_mentor is distinct from p_actor_uuid then
+    raise exception 'reactivation actor is not authorized' using errcode = '42501';
+  end if;
+  if actor_role = 'admin' and previous_group is distinct from p_student_group then
+    raise exception 'only a super admin can change a student group' using errcode = '42501';
+  end if;
+
+  update public.profiles
+  set student_group = p_student_group, is_active = true
+  where id = p_student_uuid and role = 'student'
+  returning * into result;
+
+  insert into public.audit_events (actor_id, action, target_id, metadata)
+  values (
+    p_actor_uuid,
+    'account_reactivated',
+    p_student_uuid,
+    jsonb_build_object(
+      'role', 'student',
+      'old_group', previous_group,
+      'new_group', p_student_group,
+      'restored_during_creation', p_restored_during_creation
+    )
+  );
+
+  return result;
+end;
+$$;
+
 create function public.update_payment_settings(
   p_actor_uuid uuid,
   p_qr_path text,
@@ -1048,6 +1116,11 @@ alter table public.audit_events add constraint audit_events_action_check check (
 revoke execute on function private.validate_student_payment(),
   private.require_payment_reviewer(uuid, uuid)
   from public, anon, authenticated;
+
+revoke execute on function public.reactivate_student_profile(uuid, uuid, public.student_group, boolean)
+  from public, anon, authenticated;
+grant execute on function public.reactivate_student_profile(uuid, uuid, public.student_group, boolean)
+  to service_role;
 
 revoke execute on function public.update_student_group(uuid, uuid, public.student_group),
   public.update_payment_settings(uuid, text, text),

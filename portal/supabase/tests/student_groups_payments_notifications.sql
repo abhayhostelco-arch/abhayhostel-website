@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(135);
+select plan(144);
 
 select has_column('public', 'profiles', 'student_group', 'profiles expose the canonical student group');
 select has_table('public', 'payment_settings', 'payment settings persist the QR path and instructions');
@@ -73,6 +73,14 @@ select function_privs_are(
 select function_privs_are(
   'public', 'update_student_group', array['uuid', 'uuid', 'student_group'],
   'service_role', array['EXECUTE']::text[], 'service role can change a student group transactionally'
+);
+select function_privs_are(
+  'public', 'reactivate_student_profile', array['uuid', 'uuid', 'student_group', 'boolean'],
+  'authenticated', array[]::text[], 'authenticated users cannot reactivate a Student through the server RPC'
+);
+select function_privs_are(
+  'public', 'reactivate_student_profile', array['uuid', 'uuid', 'student_group', 'boolean'],
+  'service_role', array['EXECUTE']::text[], 'service role can reactivate a Student transactionally'
 );
 select function_privs_are(
   'public', 'update_payment_settings', array['uuid', 'text', 'text'],
@@ -320,6 +328,53 @@ select is(
 select throws_ok(
   $$ select public.update_student_group('10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000001', 'abhay_hostel') $$,
   '42501', 'active super admin required', 'Mentor cannot change a student group'
+);
+
+select is(
+  (public.reactivate_student_profile(
+    '10000000-0000-4000-8000-000000000004',
+    '10000000-0000-4000-8000-000000000005',
+    'krishna_home'::public.student_group,
+    true
+  )).is_active,
+  true,
+  'Super Admin reactivation activates the Student transactionally'
+);
+select is(
+  (select student_group::text from public.profiles where id = '10000000-0000-4000-8000-000000000005'),
+  'krishna_home',
+  'Super Admin reactivation commits the selected group'
+);
+select is(
+  (select metadata ->> 'old_group' from public.audit_events where action = 'account_reactivated' and target_id = '10000000-0000-4000-8000-000000000005' order by id desc limit 1),
+  'abhay_hostel',
+  'reactivation audit captures the old group'
+);
+select is(
+  (select metadata ->> 'new_group' from public.audit_events where action = 'account_reactivated' and target_id = '10000000-0000-4000-8000-000000000005' order by id desc limit 1),
+  'krishna_home',
+  'reactivation audit captures the new group'
+);
+
+update public.profiles set is_active = false where id = '10000000-0000-4000-8000-000000000001';
+select is(
+  (public.reactivate_student_profile(
+    '10000000-0000-4000-8000-000000000003',
+    '10000000-0000-4000-8000-000000000001',
+    'krishna_home'::public.student_group,
+    false
+  )).is_active,
+  true,
+  'assigned Mentor can reactivate a Student in the stored group'
+);
+update public.profiles set is_active = false where id = '10000000-0000-4000-8000-000000000001';
+select throws_ok(
+  $$ select public.reactivate_student_profile('10000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000001', 'abhay_hostel', false) $$,
+  '42501', 'only a super admin can change a student group', 'Mentor cannot change the stored group during reactivation'
+);
+select throws_ok(
+  $$ select public.reactivate_student_profile('10000000-0000-4000-8000-000000000007', '10000000-0000-4000-8000-000000000001', 'krishna_home', false) $$,
+  '42501', 'reactivation actor is not authorized', 'unassigned Mentor cannot reactivate a Student'
 );
 
 select is(
