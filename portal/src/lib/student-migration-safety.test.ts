@@ -1,15 +1,15 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const migration = readFileSync(
-  new URL("../../supabase/migrations/202608300003_student_groups_scoring_payments.sql", import.meta.url),
-  "utf8",
-);
-const normalized = migration.replace(/\s+/g, " ").trim();
-const leaveNotificationFixMigration = readFileSync(
-  new URL("../../supabase/migrations/202609010001_leave_notification_delivery_fixes.sql", import.meta.url),
-  "utf8",
-).replace(/\s+/g, " ").trim();
+const migrationDirectory = new URL("../../supabase/migrations/", import.meta.url);
+const featureMigrations = readdirSync(migrationDirectory)
+  .filter((filename) => filename >= "202608300003_student_groups_scoring_payments.sql" && filename.endsWith(".sql"))
+  .map((filename) => ({
+    filename,
+    normalized: readFileSync(new URL(filename, migrationDirectory), "utf8").replace(/\s+/g, " ").trim(),
+  }));
+const normalized = featureMigrations.find(({ filename }) => filename === "202608300003_student_groups_scoring_payments.sql")!.normalized;
+const leaveNotificationFixMigration = featureMigrations.find(({ filename }) => filename === "202609010001_leave_notification_delivery_fixes.sql")!.normalized;
 
 describe("student groups, payments, and notifications migration safety", () => {
   it("backfills every existing student without filtering inactive rows", () => {
@@ -67,11 +67,19 @@ describe("student groups, payments, and notifications migration safety", () => {
     }
   });
 
-  it("contains no row-deletion or destructive schema operation", () => {
-    expect(normalized).not.toMatch(/\bdelete from\b/);
-    expect(normalized).not.toMatch(/\btruncate\b/);
-    expect(normalized).not.toMatch(/\bdrop table\b/);
-    expect(normalized).not.toMatch(/\bdrop column\b/);
+  it("permits only the required audit constraint replacement among feature-migration drops", () => {
+    const destructiveStatements = featureMigrations.flatMap(({ filename, normalized: sql }) =>
+      [...sql.matchAll(/\b(?:delete from|truncate|drop table|drop column|drop constraint|drop policy|drop type|drop function)\b[^;]*;/g)]
+        .map(([statement]) => ({ filename, statement })),
+    );
+
+    expect(destructiveStatements).toEqual([{
+      filename: "202608300003_student_groups_scoring_payments.sql",
+      statement: "drop constraint audit_events_action_check;",
+    }]);
+    expect(normalized).toContain(
+      "alter table public.audit_events add constraint audit_events_action_check check",
+    );
   });
 
   it("revokes direct service-role mutations on RPC-owned tables", () => {
@@ -86,6 +94,28 @@ describe("student groups, payments, and notifications migration safety", () => {
     );
     expect(normalized).toContain(
       "grant update ( role, full_name, email, phone, academy_label, joined_on, is_active, must_change_password, created_by, mentor_id, birth_date, avatar_path, deletion_pending_at ) on table public.profiles to service_role;",
+    );
+  });
+
+  it("enables forced SELECT-only RLS for all new application tables", () => {
+    for (const table of ["payment_settings", "student_payments", "leave_notification_deliveries"]) {
+      expect(normalized).toContain(`alter table public.${table} enable row level security;`);
+      expect(normalized).toContain(`alter table public.${table} force row level security;`);
+    }
+    expect(normalized).toContain(
+      "create policy payment_settings_select_active on public.payment_settings for select to authenticated using (private.current_user_is_active());",
+    );
+    expect(normalized).toContain(
+      "create policy student_payments_select_authorized on public.student_payments for select to authenticated",
+    );
+    expect(normalized).toContain(
+      "create policy leave_notifications_select_authorized on public.leave_notification_deliveries for select to authenticated",
+    );
+    expect(normalized).toContain(
+      "revoke all on table public.payment_settings, public.student_payments, public.leave_notification_deliveries from public, anon, authenticated;",
+    );
+    expect(normalized).toContain(
+      "grant select on table public.payment_settings, public.student_payments, public.leave_notification_deliveries to authenticated;",
     );
   });
 
@@ -107,7 +137,21 @@ describe("student groups, payments, and notifications migration safety", () => {
     expect(normalized).toContain("grant execute on function public.reactivate_student_profile(uuid, uuid, public.student_group, boolean) to service_role;");
   });
 
-  it("reloads the PostgREST schema cache after adding the targeted notification claim RPC", () => {
-    expect(leaveNotificationFixMigration).toContain("notify pgrst, 'reload schema';");
+  it("reloads the PostgREST schema cache after public RPC grants", () => {
+    const primaryRpcIndex = normalized.indexOf("create function public.claim_leave_notification_batch(");
+    const primaryGrantIndex = normalized.lastIndexOf("to service_role;");
+    const primaryNotifyIndex = normalized.lastIndexOf("notify pgrst, 'reload schema';");
+    const targetedRpcIndex = leaveNotificationFixMigration.indexOf("create function public.claim_leave_notification(");
+    const targetedGrantIndex = leaveNotificationFixMigration.indexOf(
+      "grant execute on function public.claim_leave_notification(uuid, uuid, integer) to service_role;",
+    );
+    const targetedNotifyIndex = leaveNotificationFixMigration.indexOf("notify pgrst, 'reload schema';");
+
+    expect(primaryRpcIndex).toBeGreaterThan(-1);
+    expect(primaryGrantIndex).toBeGreaterThan(primaryRpcIndex);
+    expect(primaryNotifyIndex).toBeGreaterThan(primaryGrantIndex);
+    expect(targetedRpcIndex).toBeGreaterThan(-1);
+    expect(targetedGrantIndex).toBeGreaterThan(targetedRpcIndex);
+    expect(targetedNotifyIndex).toBeGreaterThan(targetedGrantIndex);
   });
 });
