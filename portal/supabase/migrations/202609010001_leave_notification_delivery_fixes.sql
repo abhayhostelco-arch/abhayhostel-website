@@ -119,3 +119,5 @@ $$;
 
 revoke execute on function public.claim_leave_notification(uuid, uuid, integer) from public, anon, authenticated;
 grant execute on function public.claim_leave_notification(uuid, uuid, integer) to service_role;
+
+notify pgrst, 'reload schema';

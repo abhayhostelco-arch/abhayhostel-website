@@ -6,6 +6,10 @@ const migration = readFileSync(
   "utf8",
 );
 const normalized = migration.replace(/\s+/g, " ").trim();
+const leaveNotificationFixMigration = readFileSync(
+  new URL("../../supabase/migrations/202609010001_leave_notification_delivery_fixes.sql", import.meta.url),
+  "utf8",
+).replace(/\s+/g, " ").trim();
 
 describe("student groups, payments, and notifications migration safety", () => {
   it("backfills every existing student without filtering inactive rows", () => {
@@ -101,5 +105,9 @@ describe("student groups, payments, and notifications migration safety", () => {
     expect(body).toContain("return result;");
     expect(body.indexOf("assigned_mentor is distinct from p_actor_uuid")).toBeLessThan(body.indexOf("if was_active then"));
     expect(normalized).toContain("grant execute on function public.reactivate_student_profile(uuid, uuid, public.student_group, boolean) to service_role;");
+  });
+
+  it("reloads the PostgREST schema cache after adding the targeted notification claim RPC", () => {
+    expect(leaveNotificationFixMigration).toContain("notify pgrst, 'reload schema';");
   });
 });
