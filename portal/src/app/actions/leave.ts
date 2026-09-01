@@ -7,7 +7,7 @@ import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getServerEnv } from "@/lib/env";
-import { deliverLeaveNotifications } from "@/lib/leave-notifications";
+import { deliverLeaveNotification, deliverLeaveNotifications } from "@/lib/leave-notifications";
 import { isMissingSchemaError } from "@/lib/schema-compat";
 import { canWithdrawLeaveRequest } from "@/lib/date";
 import { removeLeaveAttachment } from "@/lib/leave-attachments";
@@ -137,8 +137,7 @@ export async function decideLeaveRequestAction(_previous: ActionState, formData:
       clearPath: async () => !(await admin.from("leave_requests").update({ attachment_path: null }).eq("id", request.id)).error,
     });
   }
-  const outcomes = await deliverLeaveNotifications(admin, randomUUID(), getServerEnv().NEXT_PUBLIC_APP_URL);
-  const outcome = outcomes.find((item) => item.notificationId === result.notification_id);
+  const outcome = await deliverLeaveNotification(admin, randomUUID(), result.notification_id, getServerEnv().NEXT_PUBLIC_APP_URL);
   revalidateLeavePages();
   if (request?.student_id) {
     revalidatePath(`/admin/students/${request.student_id}`);

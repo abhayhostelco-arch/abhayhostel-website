@@ -18,25 +18,37 @@ function isClaimedDelivery(value: unknown): value is ClaimedDelivery {
     && (typeof delivery.decision_note === "string" || delivery.decision_note === null) && typeof delivery.idempotency_key === "string" && typeof delivery.lease_token === "string";
 }
 
+async function deliverClaimedNotification(admin: NotificationAdmin, workerId: string, delivery: ClaimedDelivery, appUrl: string): Promise<{ notificationId: string; status: "sent" | "failed" }> {
+  try {
+    const provider = await sendLeaveDecisionEmail(delivery, appUrl);
+    const completion = await admin.rpc("complete_leave_notification_delivery", {
+      p_notification_uuid: delivery.id, p_worker_uuid: workerId, p_lease_token: delivery.lease_token,
+      p_succeeded: true, p_provider_message_id: provider.id, p_error: null,
+    });
+    return { notificationId: delivery.id, status: completion.error ? "failed" : "sent" };
+  } catch (error) {
+    await admin.rpc("complete_leave_notification_delivery", {
+      p_notification_uuid: delivery.id, p_worker_uuid: workerId, p_lease_token: delivery.lease_token,
+      p_succeeded: false, p_provider_message_id: null, p_error: deliveryError(error),
+    });
+    return { notificationId: delivery.id, status: "failed" };
+  }
+}
+
 export async function deliverLeaveNotifications(admin: NotificationAdmin, workerId: string, appUrl: string): Promise<Array<{ notificationId: string; status: "sent" | "failed" }>> {
   const claim = await admin.rpc("claim_leave_notification_batch", { p_worker_uuid: workerId, p_limit: 50, p_lease_seconds: 60 });
   if (claim.error || !Array.isArray(claim.data)) return [];
   const outcomes: Array<{ notificationId: string; status: "sent" | "failed" }> = [];
   for (const delivery of claim.data.filter(isClaimedDelivery)) {
-    try {
-      const provider = await sendLeaveDecisionEmail(delivery, appUrl);
-      const completion = await admin.rpc("complete_leave_notification_delivery", {
-        p_notification_uuid: delivery.id, p_worker_uuid: workerId, p_lease_token: delivery.lease_token,
-        p_succeeded: true, p_provider_message_id: provider.id, p_error: null,
-      });
-      outcomes.push({ notificationId: delivery.id, status: completion.error ? "failed" : "sent" });
-    } catch (error) {
-      await admin.rpc("complete_leave_notification_delivery", {
-        p_notification_uuid: delivery.id, p_worker_uuid: workerId, p_lease_token: delivery.lease_token,
-        p_succeeded: false, p_provider_message_id: null, p_error: deliveryError(error),
-      });
-      outcomes.push({ notificationId: delivery.id, status: "failed" });
-    }
+    outcomes.push(await deliverClaimedNotification(admin, workerId, delivery, appUrl));
   }
   return outcomes;
+}
+
+export async function deliverLeaveNotification(admin: NotificationAdmin, workerId: string, notificationId: string, appUrl: string): Promise<{ notificationId: string; status: "sent" | "failed" } | null> {
+  const claim = await admin.rpc("claim_leave_notification", {
+    p_worker_uuid: workerId, p_notification_uuid: notificationId, p_lease_seconds: 60,
+  });
+  if (claim.error || !isClaimedDelivery(claim.data)) return null;
+  return deliverClaimedNotification(admin, workerId, claim.data, appUrl);
 }

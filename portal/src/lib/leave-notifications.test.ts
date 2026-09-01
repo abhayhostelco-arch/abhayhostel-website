@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
-import { deliverLeaveNotifications } from "@/lib/leave-notifications";
+import { deliverLeaveNotification, deliverLeaveNotifications } from "@/lib/leave-notifications";
 
 const delivery = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -17,7 +17,7 @@ const delivery = {
   lease_token: "44444444-4444-4444-8444-444444444444",
 };
 
-function adminWith(claimed: unknown[]) {
+function adminWith(claimed: unknown) {
   const rpc = vi.fn()
     .mockResolvedValueOnce({ data: claimed, error: null })
     .mockResolvedValue({ data: true, error: null });
@@ -58,5 +58,19 @@ describe("leave notification delivery", () => {
       p_notification_uuid: delivery.id, p_succeeded: false, p_provider_message_id: null,
       p_error: "recipient email is missing or invalid",
     }));
+  });
+
+  it("claims and delivers the newly created notification directly instead of relying on the global batch order", async () => {
+    const admin = adminWith(delivery);
+    process.env.RESEND_API_KEY = "re_test_key";
+    process.env.LEAVE_EMAIL_FROM = "Abhay Hostel <leave@example.test>";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "provider-id" }), { status: 200 })));
+
+    const outcome = await deliverLeaveNotification(admin, "55555555-5555-4555-8555-555555555555", delivery.id, "https://portal.example.test");
+
+    expect(outcome).toEqual({ notificationId: delivery.id, status: "sent" });
+    expect(admin.rpc).toHaveBeenNthCalledWith(1, "claim_leave_notification", {
+      p_worker_uuid: "55555555-5555-4555-8555-555555555555", p_notification_uuid: delivery.id, p_lease_seconds: 60,
+    });
   });
 });

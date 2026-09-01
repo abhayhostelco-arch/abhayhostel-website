@@ -140,6 +140,14 @@ select function_privs_are(
   'service_role', array['EXECUTE']::text[], 'service role can claim notification deliveries'
 );
 select function_privs_are(
+  'public', 'claim_leave_notification', array['uuid', 'uuid', 'integer'],
+  'authenticated', array[]::text[], 'authenticated users cannot target notification deliveries'
+);
+select function_privs_are(
+  'public', 'claim_leave_notification', array['uuid', 'uuid', 'integer'],
+  'service_role', array['EXECUTE']::text[], 'service role can target notification deliveries'
+);
+select function_privs_are(
   'public', 'complete_leave_notification_delivery', array['uuid', 'uuid', 'uuid', 'boolean', 'text', 'text'],
   'authenticated', array[]::text[], 'authenticated users cannot complete notification deliveries'
 );
@@ -759,6 +767,48 @@ select is(
   null,
   'a failed notification durably snapshots the missing recipient'
 );
+select is(
+  public.retry_leave_notification(
+    '10000000-0000-4000-8000-000000000004',
+    (select id from public.leave_notification_deliveries where leave_request_id = '10000000-0000-4000-8000-000000000012')
+  ),
+  true,
+  'retry records another retryable failure while the recipient remains invalid'
+);
+select is(
+  (select status from public.leave_notification_deliveries where leave_request_id = '10000000-0000-4000-8000-000000000012'),
+  'failed',
+  'an invalid refreshed recipient remains failed and retryable'
+);
+
+update public.profiles
+set email = 'corrected-student@example.com'
+where id = '10000000-0000-4000-8000-000000000006';
+select is(
+  public.retry_leave_notification(
+    '10000000-0000-4000-8000-000000000004',
+    (select id from public.leave_notification_deliveries where leave_request_id = '10000000-0000-4000-8000-000000000012')
+  ),
+  true,
+  'Super Admin retry refreshes a failed notification after the student corrects their email'
+);
+select is(
+  (select recipient_email from public.leave_notification_deliveries where leave_request_id = '10000000-0000-4000-8000-000000000012'),
+  'corrected-student@example.com',
+  'retry refreshes the durable recipient snapshot without changing the decision version'
+);
+select is(
+  public.retry_leave_notification(
+    '10000000-0000-4000-8000-000000000004',
+    (select id from public.leave_notification_deliveries where leave_request_id = '10000000-0000-4000-8000-000000000012')
+  ),
+  false,
+  'retry is a no-op unless the notification is failed'
+);
+select throws_ok(
+  $$ select public.retry_leave_notification('10000000-0000-4000-8000-000000000003', (select id from public.leave_notification_deliveries where leave_request_id = '10000000-0000-4000-8000-000000000012')) $$,
+  '42501', 'active super admin required', 'Mentor cannot retry a leave notification'
+);
 
 insert into public.student_payments (
   student_id, fee_month, amount_paise, payment_date, utr
@@ -812,6 +862,25 @@ select is((select count(*)::integer from public.student_payments), 4, 'Super Adm
 select is((select count(*)::integer from public.leave_notification_deliveries), 4, 'Super Admin sees all leave notifications');
 
 reset role;
+insert into public.leave_requests (id, student_id, start_date, end_date, reason)
+values ('10000000-0000-4000-8000-000000000014', '10000000-0000-4000-8000-000000000001', current_date + 50, current_date + 51, 'Targeted delivery fixture');
+select is(
+  (public.decide_leave_request(
+    '10000000-0000-4000-8000-000000000004',
+    '10000000-0000-4000-8000-000000000014', 'pending', 'approved', null
+  ) ->> 'notification_id')::uuid,
+  (select id from public.leave_notification_deliveries where leave_request_id = '10000000-0000-4000-8000-000000000014'),
+  'a new decision creates a targetable delivery snapshot'
+);
+select is(
+  (public.claim_leave_notification(
+    '10000000-0000-4000-8000-000000000099',
+    (select id from public.leave_notification_deliveries where leave_request_id = '10000000-0000-4000-8000-000000000014'),
+    60
+  ) ->> 'id')::uuid,
+  (select id from public.leave_notification_deliveries where leave_request_id = '10000000-0000-4000-8000-000000000014'),
+  'targeted claim leases the new decision despite older retryable deliveries'
+);
 select cmp_ok(
   (select count(*) from public.profiles where role = 'student'), '>=',
   (select student_count from task1_counts),

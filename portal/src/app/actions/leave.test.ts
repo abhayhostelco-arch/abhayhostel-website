@@ -32,7 +32,7 @@ describe("leave decision server actions", () => {
     mocks.from.mockReturnValue({ select: () => ({ eq: () => ({ maybeSingle: mocks.maybeSingle }) }) });
     mocks.maybeSingle.mockResolvedValue({ data: { id: requestId, student_id: "00000000-0000-4000-8000-000000000099", attachment_path: null }, error: null });
     mocks.rpc.mockResolvedValueOnce({ data: { changed: true, status: "approved", notification_id: notificationId }, error: null })
-      .mockResolvedValueOnce({ data: [{ id: notificationId, leave_request_id: requestId, decision_version: 1, recipient_email: "student@example.com", student_name: "Asha", leave_start_date: "2026-09-10", leave_end_date: "2026-09-12", decision: "approved", decision_note: null, idempotency_key: "leave-decision:2:1", lease_token: "00000000-0000-4000-8000-000000000004" }], error: null })
+      .mockResolvedValueOnce({ data: { id: notificationId, leave_request_id: requestId, decision_version: 1, recipient_email: "student@example.com", student_name: "Asha", leave_start_date: "2026-09-10", leave_end_date: "2026-09-12", decision: "approved", decision_note: null, idempotency_key: "leave-decision:2:1", lease_token: "00000000-0000-4000-8000-000000000004" }, error: null })
       .mockResolvedValueOnce({ data: true, error: null });
     process.env.RESEND_API_KEY = "re_test_key";
     process.env.LEAVE_EMAIL_FROM = "Abhay Hostel <leave@example.test>";
@@ -48,6 +48,7 @@ describe("leave decision server actions", () => {
     expect(mocks.rpc).toHaveBeenNthCalledWith(1, "decide_leave_request", {
       p_actor_uuid: admin.id, p_request_uuid: requestId, p_expected_status: "pending", p_decision: "approved", p_decision_note: null,
     });
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2, "claim_leave_notification", expect.objectContaining({ p_notification_uuid: notificationId }));
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/admin/students/00000000-0000-4000-8000-000000000099");
   });
 
