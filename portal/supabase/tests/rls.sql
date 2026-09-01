@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(61);
+select plan(71);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -227,6 +227,51 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000004', true);
 select is((select count(*)::integer from public.leave_requests), 1, 'Admin sees all leave requests');
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', true);
+select lives_ok(
+  $$ insert into storage.objects (bucket_id, name, owner_id) values ('student-avatars', '00000000-0000-4000-8000-000000000001/avatar-1724800000000.webp', '00000000-0000-4000-8000-000000000001') $$,
+  'Student can upload an avatar in their own folder'
+);
+select is((select count(*)::integer from storage.objects where bucket_id = 'student-avatars'), 1, 'Student sees their own avatar');
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', true);
+select is((select count(*)::integer from storage.objects where bucket_id = 'student-avatars'), 0, 'Student cannot read another Student avatar');
+select lives_ok(
+  $$ update storage.objects set metadata = '{"forged":true}'::jsonb where bucket_id = 'student-avatars' and name = '00000000-0000-4000-8000-000000000001/avatar-1724800000000.webp' $$,
+  'Student cannot update another Student avatar'
+);
+select lives_ok(
+  $$ delete from storage.objects where bucket_id = 'student-avatars' and name = '00000000-0000-4000-8000-000000000001/avatar-1724800000000.webp' $$,
+  'Student cannot remove another Student avatar'
+);
+reset role;
+select is((select count(*)::integer from storage.objects where bucket_id = 'student-avatars' and name = '00000000-0000-4000-8000-000000000001/avatar-1724800000000.webp'), 1, 'Unauthorized avatar update/delete leave the object present');
+select is((select metadata::text from storage.objects where bucket_id = 'student-avatars' and name = '00000000-0000-4000-8000-000000000001/avatar-1724800000000.webp'), null, 'Unauthorized avatar update leaves metadata unchanged');
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000003', true);
+select is((select count(*)::integer from storage.objects where bucket_id = 'student-avatars'), 1, 'Mentor can read an assigned Student avatar');
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', true);
+select lives_ok(
+  $$ delete from storage.objects where bucket_id = 'student-avatars' and name = '00000000-0000-4000-8000-000000000001/avatar-1724800000000.webp' $$,
+  'Student can remove their own avatar'
+);
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', true);
+select throws_ok(
+  $$ insert into storage.objects (bucket_id, name, owner_id) values ('student-avatars', '00000000-0000-4000-8000-000000000001/avatar-1724800000001.png', '00000000-0000-4000-8000-000000000002') $$,
+  '42501', null, 'Student cannot upload an avatar for another Student'
+);
 
 select * from finish();
 rollback;

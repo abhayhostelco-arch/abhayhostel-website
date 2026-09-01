@@ -1415,6 +1415,9 @@ td small { color: var(--muted); overflow-wrap: anywhere; }
 .leaderboard-tabs button:hover { color: var(--navy); border-color: var(--border-control); }
 .leaderboard-tabs button[aria-selected="true"] { color: var(--action-text); background: var(--navy); border-color: var(--navy); box-shadow: 0 3px 10px var(--shadow-color); }
 .leaderboard-chart { display: grid; gap: .4rem; }
+.group-scoreboards { display: grid; gap: 1rem; }
+.group-scoreboard { min-width: 0; }
+.group-scoreboard > h3 { margin: 0 0 .55rem; color: var(--navy-deep); font-size: .9rem; }
 .leaderboard-bar-row { min-width: 0; display: grid; grid-template-columns: 38px minmax(130px,1.2fr) minmax(100px,3fr) 36px; gap: .7rem; align-items: center; min-height: 38px; padding: .35rem .55rem; border-radius: 6px; }
 .leaderboard-bar-row:nth-child(odd) { background: var(--surface-subtle); }
 .leaderboard-bar-row.is-current { background: var(--status-warning-bg); box-shadow: inset 3px 0 var(--gold); }
@@ -1593,12 +1596,6 @@ button,a { -webkit-tap-highlight-color: var(--shadow-color); }
 
 .student-overview-link { display: block; margin: -.35rem -.5rem -.5rem; padding: .35rem .5rem .5rem; border-radius: 9px; transition: background-color 140ms ease; }
 .student-overview-link:hover { background: var(--navy-soft); }
-.featured-student { min-width: 0; display: grid; grid-template-columns: 58px minmax(0,1fr) auto; gap: .8rem; align-items: center; padding: .35rem 0 .85rem; }
-.featured-student-avatar { width: 58px; height: 58px; display: grid; place-items: center; color: var(--chart-series-2); background: var(--chart-series-2-soft); border-radius: 50%; }
-.featured-student h3 { overflow: hidden; margin-top: .25rem; color: var(--navy-deep); font-size: 1rem; text-overflow: ellipsis; white-space: nowrap; }
-.featured-student p { margin-top: .18rem; color: var(--muted); font-size: .7rem; }
-.featured-student > strong { color: var(--success); font-size: 1.35rem; font-variant-numeric: tabular-nums; }
-.featured-student > strong small { font-size: .65rem; }
 .student-mini-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .student-mini-stats span { min-width: 0; display: grid; gap: .1rem; padding: .75rem .3rem; color: var(--muted); font-size: .61rem; text-align: center; }
 .student-mini-stats span + span { border-left: 1px solid var(--line); }
@@ -1836,8 +1833,6 @@ tbody tr:hover { background: var(--surface-subtle); }
   .score-overview { grid-template-columns: 1fr; }
   .score-ring { width: 145px; }
   .attendance-heatmap { grid-template-columns: repeat(7,minmax(38px,1fr)); padding-bottom: .35rem; overflow-x: auto; }
-  .featured-student { grid-template-columns: 52px minmax(0,1fr); }
-  .featured-student > strong { grid-column: 2; }
   .student-mini-stats { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .student-mini-stats span:nth-child(3) { border-left: 0; border-top: 1px solid var(--line); }
   .student-mini-stats span:nth-child(4) { border-top: 1px solid var(--line); }
@@ -2234,7 +2229,6 @@ th {
 .panel-title h2,
 .metric-card strong,
 .dashboard-metric-copy > strong,
-.featured-student h3,
 .student-mini-stats b,
 .score-ring strong,
 .score-category > div strong,

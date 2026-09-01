@@ -4,7 +4,7 @@ import { ArrowRight, BookOpen, HeartHandshake, MoonStar, Sparkles } from "lucide
 import type { ReactNode } from "react";
 import type { GrowthBreakdown, StudentGrowthReport } from "@/lib/growth-score";
 import { roundedScores } from "@/lib/growth-score";
-import { ProfileAvatar } from "@/components/profile-avatar";
+import { groupGrowthStudents } from "@/lib/leaderboard";
 
 export type AccentTone = "purple" | "green" | "orange" | "blue" | "rose" | "gold";
 
@@ -58,10 +58,10 @@ export function DashboardPanel({
 }
 
 const scoreCategories = [
-  { key: "sadhana", label: "Sadhana Score", icon: Sparkles, tone: "green" },
-  { key: "study", label: "Study Score", icon: BookOpen, tone: "blue" },
-  { key: "discipline", label: "Discipline Score", icon: MoonStar, tone: "orange" },
-  { key: "seva", label: "Seva & Character", icon: HeartHandshake, tone: "purple" },
+  { key: "sadhana", label: "Sadhana Score", maximum: 100, icon: Sparkles, tone: "green" },
+  { key: "study", label: "Study Score", maximum: 100, icon: BookOpen, tone: "blue" },
+  { key: "discipline", label: "Discipline Score (0–50)", maximum: 50, icon: MoonStar, tone: "orange" },
+  { key: "seva", label: "Seva & Character", maximum: 100, icon: HeartHandshake, tone: "purple" },
 ] as const;
 
 export function ScoreOverview({ scores }: { scores: GrowthBreakdown }) {
@@ -78,10 +78,10 @@ export function ScoreOverview({ scores }: { scores: GrowthBreakdown }) {
         <div><strong>{values.overall}</strong><span>/100</span><small>{quality}</small></div>
       </div>
       <div className="score-category-list">
-        {scoreCategories.map(({ key, label, icon: Icon, tone }) => (
+        {scoreCategories.map(({ key, label, maximum, icon: Icon, tone }) => (
           <div className={`score-category score-category-${tone}`} key={key}>
-            <div><span><Icon size={15} aria-hidden="true" /> {label}</span><strong>{values[key]}/100</strong></div>
-            <span className="score-category-track" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={values[key]}><i style={{ width: `${values[key]}%` }} /></span>
+            <div><span><Icon size={15} aria-hidden="true" /> {label}</span><strong>{values[key]}/{maximum}</strong></div>
+            <span className="score-category-track" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={maximum} aria-valuenow={values[key]}><i style={{ width: `${Math.min(values[key] / maximum * 100, 100)}%` }} /></span>
           </div>
         ))}
       </div>
@@ -147,13 +147,12 @@ export function StudentSummaryStrip({
   hrefBase?: string;
   currentStudentId?: string;
 }) {
-  if (!students.length) return <div className="empty-state compact-empty"><strong>No Student Summaries</strong><p>Student summaries will appear when scoring begins.</p></div>;
   return (
-    <div className="student-summary-strip" role="region" aria-label="Student summaries; scroll horizontally to view more" tabIndex={0}>
-      {students.slice(0, 6).map((student) => {
-        const body = <><ProfileAvatar name={student.studentName} size={38} /><div><strong title={student.studentName}>{student.studentName}{student.studentId === currentStudentId ? " (You)" : ""}</strong><span className="student-summary-meta">{student.submittedDays}/{student.eligibleDays} entries</span></div><b>{Math.round(student.overall)}<small>/100</small></b>{hrefBase ? <ArrowRight size={17} aria-hidden="true" /> : null}</>;
-        return hrefBase ? <Link key={student.studentId} href={`${hrefBase}/${student.studentId}`}>{body}</Link> : <div key={student.studentId}>{body}</div>;
-      })}
-    </div>
+    <div className="group-scoreboards">{groupGrowthStudents(students).map((group) => <section className="group-scoreboard" key={group.value}><h3>{group.label}</h3><div className="student-summary-strip" role="region" aria-label={`${group.label} student summaries; scroll horizontally to view more`} tabIndex={0}>
+        {group.students.length ? group.students.slice(0, 6).map((student) => {
+          const body = <><div><strong title={student.studentName}>{student.studentName}{student.studentId === currentStudentId ? " (You)" : ""}</strong><span className="student-summary-meta">{student.submittedDays}/{student.eligibleDays} entries</span></div><b>{Math.round(student.overall)}<small>/100</small></b>{hrefBase ? <ArrowRight size={17} aria-hidden="true" /> : null}</>;
+          return hrefBase ? <Link key={student.studentId} href={`${hrefBase}/${student.studentId}`}>{body}</Link> : <div key={student.studentId}>{body}</div>;
+        }) : <div className="empty-state compact-empty"><strong>No Students</strong><p>No students in this group.</p></div>}
+      </div></section>)}</div>
   );
 }

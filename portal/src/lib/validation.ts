@@ -38,21 +38,31 @@ const optionalText = (max: number) =>
     .transform((value) => value || null)
     .optional();
 
-export const createAccountSchema = z.object({
-  role: z.enum(["admin", "student"]),
+const accountFields = {
   fullName: z.string().trim().min(2).max(120),
   email: z.email().trim().toLowerCase(),
   phone: optionalText(30),
   academyLabel: optionalText(120),
   joinedOn: z.iso.date().optional(),
   mentorId: z.uuid().optional(),
-});
+};
+
+export const studentGroupSchema = z.enum(["abhay_hostel", "krishna_home"]);
+export const createAccountSchema = z.discriminatedUnion("role", [
+  z.object({ ...accountFields, role: z.literal("admin"), studentGroup: z.undefined().optional() }),
+  z.object({ ...accountFields, role: z.literal("student"), studentGroup: studentGroupSchema }),
+]);
 
 export const assignMentorSchema = z.object({ studentId: z.uuid(), mentorId: z.uuid() });
 
 export const targetAccountSchema = z.object({
   targetId: z.uuid(),
   active: z.enum(["true", "false"]).transform((value) => value === "true"),
+});
+
+export const studentGroupActionSchema = z.object({
+  targetId: z.uuid(),
+  studentGroup: studentGroupSchema,
 });
 
 export const resetAccountSchema = z.object({ targetId: z.uuid() });
@@ -114,7 +124,7 @@ export const leaveRequestSchema = leaveRequestDetailsBaseSchema.extend({
   attachmentPath: z.preprocess((value) => value === "" || value === null ? undefined : value, leaveAttachmentPathSchema.optional()),
 }).refine(datesInOrder, { message: "End date must be on or after start date.", path: ["endDate"] });
 export const leaveDecisionSchema = z.object({
-  requestId: z.uuid(), decision: z.enum(["approved", "rejected"]),
+  requestId: z.uuid(), expectedStatus: z.enum(["pending", "approved"]), decision: z.enum(["approved", "rejected"]),
   decisionNote: z.string().trim().max(1000).transform((value) => value || null),
 }).superRefine((value, context) => {
   if (value.decision === "rejected" && !value.decisionNote) context.addIssue({ code: "custom", path: ["decisionNote"], message: "Give a reason when rejecting leave." });
@@ -141,6 +151,10 @@ export const scoreSettingsSchema = z
     { message: "Category weights must total 100.", path: ["sadhanaWeight"] },
   );
 
+export const scoreStartDateSchema = z.object({
+  scoreStartDate: z.iso.date(),
+});
+
 export const alertSettingsSchema = z
   .object({
     missedEntryEnabled: z.boolean(),
@@ -159,6 +173,7 @@ export const alertSettingsSchema = z
 export const reportQuerySchema = z.object({
   range: z.enum(["7", "30", "90"]).default("30"),
   studentId: z.uuid().optional(),
+  group: studentGroupSchema.optional(),
 });
 
 const safeUrl = z.url().max(2048).refine((value) => ["http:", "https:"].includes(new URL(value).protocol), "Use an HTTP or HTTPS link.");

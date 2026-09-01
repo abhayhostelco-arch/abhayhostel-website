@@ -6,34 +6,28 @@ import { updateScoreSettingsAction } from "@/app/actions/settings";
 import type { ScoreSettings } from "@/lib/types";
 import { initialActionState } from "@/lib/types";
 
+const rubric = [
+  ["Sadhana", "2 rounds", "Gita attendance · Morning Arati · 30 minutes reading · equal applicable components"],
+  ["Study", "6 hours per day", "Capped at 100 · no library-attendance bonus"],
+  ["Discipline", "10:00 PM / 5:00 AM", "25 points each · minus 5 per started 30-minute late interval"],
+  ["Seva", "180 minutes per Monday–Sunday week", "Prorated only for joining, scoring-start, and current incomplete weeks"],
+  ["Overall", "25% per category", "Equal category weighting · missing eligible entries score zero"],
+] as const;
+
 export function ScoreSettingsForm({ settings }: { settings: ScoreSettings }) {
   const [state, action, pending] = useActionState(updateScoreSettingsAction, initialActionState);
-  const fields = [
-    ["sadhanaWeight", "Sadhana weight (%)", settings.sadhana_weight, 0, 100],
-    ["studyWeight", "Study weight (%)", settings.study_weight, 0, 100],
-    ["disciplineWeight", "Discipline weight (%)", settings.discipline_weight, 0, 100],
-    ["sevaWeight", "Seva & Character weight (%)", settings.seva_weight, 0, 100],
-    ["chantingTargetRounds", "Chanting target (rounds)", settings.chanting_target_rounds, 1, 108],
-    ["eveningReadingTargetMinutes", "Evening reading target (minutes)", settings.evening_reading_target_minutes, 1, 360],
-    ["studyTargetMinutes", "Study target (minutes)", settings.study_target_minutes, 1, 1080],
-    ["sevaTargetMinutes", "Seva target (minutes)", settings.seva_target_minutes, 1, 720],
-    ["disciplineGraceMinutes", "Discipline grace period (minutes)", settings.discipline_grace_minutes, 1, 360],
-  ] as const;
   return (
     <form action={action} className="split-form">
-      {fields.map(([name, label, value, min, max]) => (
-        <div className="field" key={name}>
-          <label htmlFor={name}>{label}</label>
-          <input id={name} name={name} type="number" min={min} max={max} defaultValue={value} required />
-          {state.fieldErrors?.[name]?.map((message) => <p className="field-error" key={message} role="alert">{message}</p>)}
+      <div className="full-span">
+        <p className="field-hint">The scoring rubric is fixed in server code. Legacy database formula fields remain stored for compatibility but do not change calculated scores.</p>
+        <div className="metric-grid section-gap-small" aria-label="Fixed Growth Score rubric">
+          {rubric.map(([label, value, detail]) => <div className="metric-card" key={label}><span>{label}</span><strong>{value}</strong><small>{detail}</small></div>)}
         </div>
-      ))}
-      <div className="field"><label htmlFor="wakeTargetTime">Wake-up target</label><input id="wakeTargetTime" name="wakeTargetTime" type="time" defaultValue={settings.wake_target_time.slice(0, 5)} required /></div>
-      <div className="field"><label htmlFor="bedtimeTargetTime">Bedtime target</label><input id="bedtimeTargetTime" name="bedtimeTargetTime" type="time" defaultValue={settings.bedtime_target_time.slice(0, 5)} required /></div>
-      <div className="field"><label htmlFor="scoreStartDate">Scoring launch date</label><input id="scoreStartDate" name="scoreStartDate" type="date" defaultValue={settings.score_start_date} required /></div>
-      <p className="field-hint full-span">Category weights must total 100. Changing these settings recalculates reports from the launch date.</p>
+      </div>
+      <div className="field"><label htmlFor="scoreStartDate">Scoring launch date</label><input id="scoreStartDate" name="scoreStartDate" type="date" defaultValue={settings.score_start_date} required />{state.fieldErrors?.scoreStartDate?.map((message) => <p className="field-error" key={message} role="alert">{message}</p>)}</div>
+      <p className="field-hint full-span">Changing the launch date recalculates eligible historical reports. It does not change the fixed formula.</p>
       {state.message ? <p className={`form-message full-span ${state.status === "success" ? "form-success" : "form-error"}`} role={state.status === "success" ? "status" : "alert"}>{state.message}</p> : null}
-      <div className="full-span form-submit-bar"><button className="button" type="submit" disabled={pending}><Save size={18} aria-hidden="true" />{pending ? "Saving…" : "Save Growth Score Settings"}</button></div>
+      <div className="full-span form-submit-bar"><button className="button" type="submit" disabled={pending}><Save size={18} aria-hidden="true" />{pending ? "Saving…" : "Save Scoring Launch Date"}</button></div>
     </form>
   );
 }

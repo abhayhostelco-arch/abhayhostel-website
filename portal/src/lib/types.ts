@@ -1,7 +1,9 @@
 export type AppRole = "super_admin" | "admin" | "student";
+export type StudentGroup = "abhay_hostel" | "krishna_home";
 export type GitaClassStatus = "present" | "absent" | "no_class";
 export type MorningAratiStatus = "present" | "late" | "absent";
 export type LeaveStatus = "pending" | "approved" | "rejected" | "withdrawn";
+export type PaymentStatus = "pending" | "verified" | "rejected";
 
 export interface Profile {
   id: string;
@@ -15,6 +17,7 @@ export interface Profile {
   must_change_password: boolean;
   created_by: string | null;
   mentor_id: string | null;
+  student_group?: StudentGroup | null;
   birth_date?: string | null;
   avatar_path?: string | null;
   created_at: string;
@@ -62,8 +65,18 @@ export interface LeaveRequest {
   decision_note: string | null;
   decided_by: string | null;
   decided_at: string | null;
+  decision_version?: number;
   created_at: string;
   updated_at: string;
+}
+
+export type LeaveNotificationStatus = "pending" | "sending" | "sent" | "failed";
+
+export interface LeaveNotificationDelivery {
+  id: string;
+  leave_request_id: string;
+  decision_version: number;
+  status: LeaveNotificationStatus;
 }
 
 export interface ScoreSettings {
@@ -94,6 +107,31 @@ export interface AlertSettings {
   min_study_minutes: number;
   absence_alert_enabled: boolean;
   updated_by: string | null;
+  updated_at: string;
+}
+
+export interface PaymentSettings {
+  id: boolean;
+  qr_path: string | null;
+  instructions: string;
+  updated_by: string | null;
+  updated_at: string;
+}
+
+export interface StudentPayment {
+  id: string;
+  student_id: string;
+  fee_month: string;
+  amount_paise: number;
+  payment_date: string;
+  utr: string;
+  note: string | null;
+  status: PaymentStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  rejection_reason: string | null;
+  version: number;
+  created_at: string;
   updated_at: string;
 }
 

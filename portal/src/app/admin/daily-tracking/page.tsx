@@ -17,7 +17,7 @@ export default async function DailyTrackingPage({ searchParams }: { searchParams
   const studentId = students.some((student) => student.id === params.studentId) ? params.studentId : undefined;
   const start = daysAgoInIndia(range - 1);
   const [entries, settings, leaves] = await Promise.all([
-    getEntries({ startDate: start, studentIds: students.map((student) => student.id) }), getScoreSettings(), getLeaveRequests({ month: todayInIndia().slice(0, 7) }),
+    getEntries({ startDate: start, studentIds: students.map((student) => student.id), completeScoringWeeks: true }), getScoreSettings(), getLeaveRequests({ month: todayInIndia().slice(0, 7) }),
   ]);
   const report = buildGrowthReport(students, entries, settings, range);
   const selected = studentId ? report.students.filter((student) => student.studentId === studentId) : report.students;
