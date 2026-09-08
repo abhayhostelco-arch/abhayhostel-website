@@ -72,6 +72,10 @@ export const mahaMantraUploadSchema = z.object({
   type: z.enum(["image/jpeg", "image/png", "image/webp"]),
   size: z.number().int().positive().max(5 * 1024 * 1024),
 });
+export const mahaMantraUploadRequestSchema = mahaMantraUploadSchema.extend({
+  studentId: z.uuid(),
+  entryDate: z.iso.date(),
+});
 export const mahaMantraPathSchema = z.string().max(260).regex(
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/\d{4}-\d{2}-\d{2}\/maha-mantra-[0-9]+\.(?:jpg|jpeg|png|webp)$/i,
   "Invalid Maha Mantra evidence path.",
@@ -96,12 +100,12 @@ const dailyEntryBaseSchema = z.object({
   note: z.string().trim().max(500).transform((value) => value || null),
 });
 
-export const staffDailyEntrySchema = dailyEntryBaseSchema;
 export const dailyEntrySchema = dailyEntryBaseSchema.superRefine((value, context) => {
   if (value.morningAratiStatus !== "present" && !value.mahaMantraPath) {
-    context.addIssue({ code: "custom", path: ["mahaMantraPath"], message: "Upload a Maha Mantra picture when late or absent." });
+    context.addIssue({ code: "custom", path: ["mahaMantraPath"], message: "Select a Maha Mantra image before saving a late or absent entry." });
   }
 });
+export const staffDailyEntrySchema = dailyEntrySchema;
 
 export const leaveAttachmentUploadSchema = z.object({
   type: z.enum(["image/jpeg", "image/png", "application/pdf"]),

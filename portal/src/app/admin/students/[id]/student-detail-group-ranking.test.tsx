@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ThemeProvider } from "@/components/theme-provider";
-import type { Profile, ScoreSettings } from "@/lib/types";
+import type { DailyEntry, Profile, ScoreSettings } from "@/lib/types";
 
 const mocks = vi.hoisted(() => ({
   requireProfile: vi.fn(), getAvatarSignedUrl: vi.fn(), getEntries: vi.fn(), getLeaveRequests: vi.fn(),
@@ -34,12 +34,24 @@ const profile = (id: string, name: string, group: "abhay_hostel" | "krishna_home
 const target = profile("00000000-0000-4000-8000-000000000031", "Zulu Target", "abhay_hostel");
 const peer = profile("00000000-0000-4000-8000-000000000032", "Alpha Peer", "abhay_hostel");
 const otherGroup = profile("00000000-0000-4000-8000-000000000033", "AAA Other", "krishna_home");
+const evidenceEntry: DailyEntry = {
+  id: "entry-with-evidence", student_id: target.id, entry_date: "2026-09-08", sleep_time: "21:00:00", wake_time: "04:00:00",
+  study_minutes: 60, chanting_rounds: 16, gita_class_status: "present", morning_arati_attended: false,
+  morning_arati_status: "late", maha_mantra_path: `${target.id}/2026-09-08/maha-mantra-1.jpg`,
+  evening_reading_minutes: 30, library_attended: true, seva_minutes: 60, note: null,
+  created_at: "2026-09-08T00:00:00Z", updated_at: "2026-09-08T00:00:00Z",
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.requireProfile.mockResolvedValue({ id: "owner", role: "super_admin", full_name: "Owner" });
   mocks.getProfiles.mockResolvedValue([target, peer, otherGroup]);
-  mocks.getScoreSettings.mockResolvedValue({ score_start_date: "2026-01-01" } as ScoreSettings);
+  mocks.getScoreSettings.mockResolvedValue({
+    score_start_date: "2026-01-01", chanting_target_rounds: 16, evening_reading_target_minutes: 30,
+    study_target_minutes: 240, wake_target_time: "06:00:00", bedtime_target_time: "22:30:00",
+    seva_target_minutes: 60, discipline_grace_minutes: 120, sadhana_weight: 40, study_weight: 25,
+    discipline_weight: 20, seva_weight: 15,
+  } as ScoreSettings);
   mocks.getEntries.mockResolvedValue([]);
   mocks.getLeaveRequests.mockResolvedValue({ available: true, requests: [] });
   mocks.getProfileEnhancements.mockResolvedValue({ available: false, birthDate: null, avatarPath: null });
@@ -76,5 +88,19 @@ describe("student detail group ranking", () => {
 
     expect(html).toContain('src="https://portal.example/student-avatar"');
     expect(html).toContain("alt=\"Zulu Target&#x27;s profile picture\"");
+  });
+
+  it("links available Morning Arati evidence from Daily records", async () => {
+    mocks.getEntries.mockResolvedValue([evidenceEntry]);
+    mocks.getPrivateUploadSignedUrl.mockImplementation(async (_bucket: string, path?: string | null) => path ? "https://portal.example/evidence.jpg" : null);
+
+    const page = await StudentDetailPage({
+      params: Promise.resolve({ id: target.id }),
+      searchParams: Promise.resolve({ range: "7", date: evidenceEntry.entry_date }),
+    });
+    const html = renderToStaticMarkup(<ThemeProvider>{page}</ThemeProvider>);
+
+    expect(html).toContain('href="https://portal.example/evidence.jpg"');
+    expect(html).toContain("View image");
   });
 });

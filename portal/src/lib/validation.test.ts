@@ -56,13 +56,13 @@ describe("daily entry validation", () => {
     expect(dailyEntrySchema.safeParse({ ...base, morningAratiStatus: "excused", mahaMantraPath: ownedPath }).success).toBe(false);
   });
 
-  it("allows an authorized staff correction without historical evidence", () => {
+  it("requires evidence for staff corrections that mark Morning Arati late or absent", () => {
     const schema = (validation as unknown as { staffDailyEntrySchema: { safeParse: (value: unknown) => { success: boolean } } }).staffDailyEntrySchema;
     expect(schema.safeParse({
       entryDate: "2026-08-22", sleepTime: "22:30", wakeTime: "06:00", studyHours: 4,
       studyMinutes: 0, chantingRounds: 16, gitaClassStatus: "present", morningAratiStatus: "absent",
       mahaMantraPath: "", eveningReadingMinutes: 30, libraryAttended: true, sevaMinutes: 60, note: "",
-    }).success).toBe(true);
+    }).success).toBe(false);
   });
 
   it("accepts allowlisted values and trims an empty note", () => {

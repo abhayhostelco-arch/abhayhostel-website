@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(65);
+select plan(72);
 
 select has_table('public', 'cleanup_settings', 'cleanup settings persist the automatic toggle');
 select has_table('public', 'cleanup_runs', 'cleanup runs persist durable state');
@@ -9,6 +9,13 @@ select has_table('public', 'cleanup_candidates', 'cleanup candidates persist exa
 select has_table('public', 'cleanup_object_tasks', 'cleanup object tasks persist deletion work');
 select has_column('public', 'profiles', 'deletion_pending_at', 'profiles expose deletion-pending state');
 select has_column('public', 'audit_events', 'cleanup_run_id', 'audit events can correlate a cleanup run');
+select has_column('public', 'daily_entries', 'maha_mantra_purged_at', 'daily entries record evidence retention without deleting scores');
+select has_function('public', 'cleanup_enqueue_maha_mantra_retention', '{}', 'seven-day Maha Mantra retention can be enqueued');
+select function_privs_are('public', 'cleanup_enqueue_maha_mantra_retention', '{}', 'anon', array[]::text[], 'anonymous users cannot enqueue evidence retention');
+select function_privs_are('public', 'cleanup_enqueue_maha_mantra_retention', '{}', 'authenticated', array[]::text[], 'authenticated users cannot enqueue evidence retention');
+select function_privs_are('public', 'cleanup_enqueue_maha_mantra_retention', '{}', 'service_role', array['EXECUTE']::text[], 'service role can enqueue evidence retention');
+select like(pg_get_functiondef('public.cleanup_enqueue_maha_mantra_retention()'::regprocedure), '%d.entry_date < india_date - 7%', 'evidence exactly seven days old remains until the following India date');
+select like(pg_get_functiondef('public.cleanup_dispatch_due_runs()'::regprocedure), '%cleanup_enqueue_maha_mantra_retention%', 'hourly dispatcher enqueues evidence retention');
 
 select is(
   (select automatic_enabled from public.cleanup_settings where id),

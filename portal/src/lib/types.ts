@@ -46,6 +46,7 @@ export interface DailyEntry {
   morning_arati_attended: boolean;
   morning_arati_status?: MorningAratiStatus;
   maha_mantra_path?: string | null;
+  maha_mantra_purged_at?: string | null;
   evening_reading_minutes: number;
   library_attended: boolean;
   seva_minutes: number;
@@ -191,6 +192,7 @@ export type ActionState = {
   message?: string;
   fieldErrors?: Record<string, string[]>;
   temporaryPassword?: string;
+  confirmation?: "duplicate_student_name";
   analytics?: {
     name: string;
     params: Record<string, string | number | boolean | null>;

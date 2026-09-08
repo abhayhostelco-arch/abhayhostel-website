@@ -1151,7 +1151,12 @@ td {
 .management-row-copy small { color: var(--muted); font-size: .65rem; }
 .management-empty { display: grid; justify-items: start; gap: .6rem; padding: .8rem .1rem .25rem; color: var(--muted); font-size: .72rem; }
 .evidence-upload { align-items: start; padding: .8rem; border: 1px dashed var(--line); border-radius: 9px; background: var(--surface-subtle); }
+.form-operation-fields { min-width: 0; margin: 0; padding: 0; border: 0; }
+.evidence-preview-wrap { position: relative; width: min(240px, 100%); }
+.evidence-preview-wrap .evidence-preview { width: 100%; }
 .evidence-preview { width: min(240px,100%); height: auto; max-height: 180px; object-fit: contain; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.evidence-remove-button { position: absolute; top: .45rem; right: .45rem; display: inline-grid; width: 2rem; height: 2rem; place-items: center; padding: 0; color: var(--heading); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; box-shadow: 0 1px 4px color-mix(in srgb, var(--heading) 20%, transparent); cursor: pointer; }
+.evidence-remove-button:hover { color: var(--status-error-fg); border-color: var(--status-error-fg); }
 .upload-button { width: fit-content; }
 .leave-decision-actions { display: grid; gap: .45rem; min-width: 220px; }
 .leave-decision-actions > .status-pill { justify-self: start; }
@@ -2776,4 +2781,11 @@ html[data-theme="dark"] {
   --tooltip-text: #f4f7fa;
   --skeleton-base: #243447;
   --skeleton-highlight: #40546b;
+}
+.button-spinner {
+  animation: button-spin 0.8s linear infinite;
+}
+
+@keyframes button-spin {
+  to { transform: rotate(360deg); }
 }

@@ -2,16 +2,25 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
-import { Camera, CheckCircle2, Save } from "lucide-react";
-import { saveDailyEntryAction } from "@/app/actions/daily-entry";
+import { type FormEvent, useEffect, useRef, useState } from "react";
+import { Camera, CheckCircle2, LoaderCircle, Save, X } from "lucide-react";
+import { createDailyEntryEvidenceUploadAction, removeDailyEntryEvidenceAction, saveDailyEntryAction } from "@/app/actions/daily-entry";
 import type { DailyEntry } from "@/lib/types";
+import type { ActionState } from "@/lib/types";
 import { initialActionState } from "@/lib/types";
 import { displayDate } from "@/lib/date";
 import { createClient } from "@/lib/supabase/client";
-import { mahaMantraUploadSchema } from "@/lib/validation";
+import {
+  classifyEvidenceUploadError,
+  evidencePurgedMessage,
+  evidenceRequiredMessage,
+  validateEvidenceFile,
+  withEvidenceUploadTimeout,
+} from "@/lib/daily-entry-upload";
 
-const evidenceExtensions: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+function FieldErrors({ errors }: { errors?: string[] }) {
+  return errors?.map((message) => <p className="field-error" role="alert" key={message}>{message}</p>) ?? null;
+}
 
 export function DailyEntryForm({
   selectedDate,
@@ -32,13 +41,17 @@ export function DailyEntryForm({
 }) {
   const router = useRouter();
   const [state, setState] = useState(initialActionState);
-  const [pending, startTransition] = useTransition();
+  const [operationStage, setOperationStage] = useState<"idle" | "uploading" | "saving">("idle");
   const successDialogRef = useRef<HTMLDialogElement>(null);
   const evidenceRef = useRef<HTMLInputElement>(null);
+  const alertRef = useRef<HTMLDivElement>(null);
   const previewObjectUrlRef = useRef<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [morningStatus, setMorningStatus] = useState(entry ? (entry.morning_arati_status ?? (entry.morning_arati_attended ? "present" : "absent")) : "present");
   const [evidencePreview, setEvidencePreview] = useState<string | null>(evidenceUrl ?? null);
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [evidenceCleared, setEvidenceCleared] = useState(false);
+  const [evidenceInputVersion, setEvidenceInputVersion] = useState(0);
   const hours = entry ? Math.floor(entry.study_minutes / 60) : 0;
   const minutes = entry ? entry.study_minutes % 60 : 0;
 
@@ -49,79 +62,163 @@ export function DailyEntryForm({
     }
   }, [state]);
 
+  useEffect(() => {
+    if (state.status !== "error") return;
+    alertRef.current?.focus();
+    alertRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+  }, [state]);
+
   useEffect(() => () => { if (previewObjectUrlRef.current) URL.revokeObjectURL(previewObjectUrlRef.current); }, []);
 
   useEffect(() => {
-    if (!dirty || pending) return;
+    if (!dirty || operationStage !== "idle") return;
     const warnBeforeLeaving = (event: BeforeUnloadEvent) => { event.preventDefault(); };
     window.addEventListener("beforeunload", warnBeforeLeaving);
     return () => window.removeEventListener("beforeunload", warnBeforeLeaving);
-  }, [dirty, pending]);
+  }, [dirty, operationStage]);
 
-  function chooseEvidence(file?: File) {
-    if (!file) return;
-    if (!mahaMantraUploadSchema.safeParse({ type: file.type, size: file.size }).success) {
-      setState({ status: "error", message: "Use a JPG, PNG, or WebP image no larger than 5 MB." });
-      if (evidenceRef.current) evidenceRef.current.value = "";
+  function discardSelectedEvidence(clearExisting = evidenceCleared) {
+    if (previewObjectUrlRef.current) URL.revokeObjectURL(previewObjectUrlRef.current);
+    previewObjectUrlRef.current = null;
+    setEvidenceFile(null);
+    setEvidencePreview(clearExisting ? null : (evidenceUrl ?? null));
+    setEvidenceCleared(clearExisting);
+    if (evidenceRef.current) evidenceRef.current.value = "";
+    setEvidenceInputVersion((version) => version + 1);
+  }
+
+  function removeEvidence() {
+    if (operationStage !== "idle") return;
+    discardSelectedEvidence(true);
+    setDirty(true);
+    setState({ status: "error", message: evidenceRequiredMessage, fieldErrors: { mahaMantraPath: [evidenceRequiredMessage] } });
+  }
+
+  async function chooseEvidence(file?: File) {
+    if (!file) {
+      discardSelectedEvidence();
+      return;
+    }
+    setEvidenceFile(file);
+    const validationMessage = await validateEvidenceFile(file);
+    if (validationMessage) {
+      discardSelectedEvidence();
+      setState({ status: "error", message: validationMessage, fieldErrors: { mahaMantraPath: [validationMessage] } });
       return;
     }
     if (previewObjectUrlRef.current) URL.revokeObjectURL(previewObjectUrlRef.current);
     previewObjectUrlRef.current = URL.createObjectURL(file);
+    setEvidenceFile(file);
     setEvidencePreview(previewObjectUrlRef.current);
+    setEvidenceCleared(false);
     setDirty(true);
     setState(initialActionState);
   }
 
-  function submit(formData: FormData) {
-    startTransition(async () => {
+  function logFailure(stage: "validation" | "upload" | "save" | "cleanup", error: unknown, context: Record<string, string | number | boolean>) {
+    const value = error as { code?: string; status?: number; statusCode?: number; name?: string } | null;
+    console.error("Daily entry operation failed", {
+      stage,
+      code: value?.code ?? value?.name ?? value?.statusCode ?? value?.status ?? "unknown",
+      context,
+    });
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+      event.preventDefault();
+      if (operationStage !== "idle") return;
+      const formData = new FormData(event.currentTarget);
       setState(initialActionState);
-      const file = evidenceRef.current?.files?.[0];
-      let nextPath = morningStatus === "present" ? null : (entry?.maha_mantra_path ?? null);
+      const file = evidenceFile;
+      let nextPath = morningStatus === "present" || evidenceCleared ? null : (entry?.maha_mantra_path ?? null);
       let uploadedPath: string | null = null;
-      const supabase = createClient();
-      if (!studentId && morningStatus !== "present" && !file && !nextPath) {
-        setState({ status: "error", message: "Upload a Maha Mantra picture when late or absent." });
+      const context = { entryDate: String(formData.get("entryDate") ?? selectedDate), fileSize: file?.size ?? 0, fileType: file?.type ?? "none" };
+      if (morningStatus !== "present" && !file && !nextPath) {
+        setState({ status: "error", message: evidenceRequiredMessage, fieldErrors: { mahaMantraPath: [evidenceRequiredMessage] } });
         return;
       }
       if (file) {
-        if (!mahaMantraUploadSchema.safeParse({ type: file.type, size: file.size }).success) {
-          setState({ status: "error", message: "Use a JPG, PNG, or WebP image no larger than 5 MB." });
+        const validationMessage = await validateEvidenceFile(file);
+        if (validationMessage) {
+          logFailure("validation", { code: "INVALID_IMAGE" }, context);
+          setState({ status: "error", message: validationMessage, fieldErrors: { mahaMantraPath: [validationMessage] } });
           return;
         }
         const entryDate = String(formData.get("entryDate") ?? selectedDate);
-        uploadedPath = `${ownerStudentId}/${entryDate}/maha-mantra-${Date.now()}.${evidenceExtensions[file.type]}`;
-        const upload = await supabase.storage.from("maha-mantra-evidence").upload(uploadedPath, file, { cacheControl: "3600", contentType: file.type, upsert: false });
-        if (upload.error) {
-          setState({ status: "error", message: upload.error.message.toLowerCase().includes("bucket") ? "Maha Mantra uploads are unavailable until the database migration is applied." : "The Maha Mantra picture could not be uploaded." });
+        const grant = await createDailyEntryEvidenceUploadAction({ studentId: ownerStudentId, entryDate, type: file.type, size: file.size });
+        if (grant.status === "error" || !grant.path.startsWith(`${ownerStudentId}/${entryDate}/`)) {
+          setState({ status: "error", message: grant.status === "error" ? grant.message : "The image storage service rejected the upload. Your form data is preserved; try another image or contact the administrator." });
+          return;
+        }
+        uploadedPath = grant.path;
+        setOperationStage("uploading");
+        try {
+          const upload = await withEvidenceUploadTimeout(createClient().storage.from("maha-mantra-evidence").uploadToSignedUrl(uploadedPath, grant.token, file, { cacheControl: "3600", contentType: file.type }));
+          if (upload.error) throw upload.error;
+        } catch (error) {
+          logFailure("upload", error, context);
+          setOperationStage("idle");
+          setState({ status: "error", message: classifyEvidenceUploadError(error as Parameters<typeof classifyEvidenceUploadError>[0]) });
           return;
         }
         nextPath = uploadedPath;
       }
       formData.set("morningAratiStatus", morningStatus);
       formData.set("mahaMantraPath", nextPath ?? "");
-      const result = await saveDailyEntryAction(initialActionState, formData);
+      setOperationStage("saving");
+      let result: ActionState;
+      try {
+        result = await saveDailyEntryAction(initialActionState, formData);
+      } catch (error) {
+        logFailure("save", error, context);
+        result = { status: "error", message: "The entry was not saved. Your form data is preserved; try again." };
+      }
       if (result.status !== "success") {
-        if (uploadedPath) await supabase.storage.from("maha-mantra-evidence").remove([uploadedPath]);
-        setState(result);
+        logFailure("save", { code: result.fieldErrors ? "ENTRY_VALIDATION" : "ENTRY_SAVE_REJECTED" }, context);
+        let cleanupFailed = false;
+        if (uploadedPath) {
+          try {
+            cleanupFailed = !await removeDailyEntryEvidenceAction({ studentId: ownerStudentId, entryDate: String(formData.get("entryDate") ?? selectedDate), path: uploadedPath });
+            if (cleanupFailed) logFailure("cleanup", { code: "CLEANUP_REJECTED" }, context);
+          } catch (error) {
+            cleanupFailed = true;
+            logFailure("cleanup", error, context);
+          }
+        }
+        setOperationStage("idle");
+        setState({
+          ...result,
+          message: cleanupFailed
+            ? "The entry was not saved. Your form data is preserved. The temporary image will be removed automatically."
+            : result.fieldErrors
+              ? "The entry was not saved. Correct the highlighted fields and try again."
+              : uploadedPath
+                ? "The image uploaded, but the daily entry could not be saved. Your form data is preserved; try again."
+                : (result.message ?? "The entry was not saved. Your form data is preserved; try again."),
+        });
         return;
       }
-      if (entry?.maha_mantra_path && entry.maha_mantra_path !== nextPath) await supabase.storage.from("maha-mantra-evidence").remove([entry.maha_mantra_path]);
+      if (entry?.maha_mantra_path && entry.maha_mantra_path !== nextPath) {
+        await removeDailyEntryEvidenceAction({ studentId: ownerStudentId, entryDate: selectedDate, path: entry.maha_mantra_path });
+      }
+      setOperationStage("idle");
       setDirty(false);
       setState(result);
       router.refresh();
-    });
   }
 
   return (
     <>
-      <form action={submit} className="split-form" onChange={() => setDirty(true)}>
+      <form onSubmit={submit} className="split-form" onChange={() => setDirty(true)}>
       {studentId ? <input type="hidden" name="studentId" value={studentId} /> : null}
       <div className="full-span form-submit-bar">
-        <button className="button" type="submit" disabled={pending}>
-          <Save size={18} aria-hidden="true" />
-          {pending ? "Saving…" : entry ? "Update Daily Entry" : "Save Daily Entry"}
+        <button className="button" type="submit" disabled={operationStage !== "idle"} aria-busy={operationStage !== "idle"}>
+          {operationStage === "idle" ? <Save size={18} aria-hidden="true" /> : <LoaderCircle className="button-spinner" size={18} aria-hidden="true" />}
+          {operationStage === "uploading" ? "Uploading image…" : operationStage === "saving" ? "Saving entry…" : entry ? "Update Daily Entry" : "Save Daily Entry"}
         </button>
       </div>
+      {state.message && state.status === "error" ? <div ref={alertRef} className="form-message form-error full-span" role="alert" tabIndex={-1}>{state.message}</div> : null}
+      <fieldset className="form-operation-fields split-form full-span" disabled={operationStage !== "idle"}>
       <div className="field">
         <label htmlFor="entryDate">Wake-up date</label>
         <input
@@ -133,6 +230,7 @@ export function DailyEntryForm({
           defaultValue={selectedDate}
           required
         />
+        <FieldErrors errors={state.fieldErrors?.entryDate} />
       </div>
       <fieldset className="routine-section full-span">
         <legend>Sadhana</legend>
@@ -140,37 +238,50 @@ export function DailyEntryForm({
           <div className="field">
             <label htmlFor="chantingRounds">Morning meditation (chanting rounds)</label>
             <input id="chantingRounds" name="chantingRounds" type="number" min={0} max={108} step={1} defaultValue={entry ? entry.chanting_rounds ?? "" : 0} required />
-            {state.fieldErrors?.chantingRounds?.[0] ? <p className="field-error" role="alert">Enter a whole number from 0 to 108.</p> : null}
+            <FieldErrors errors={state.fieldErrors?.chantingRounds} />
           </div>
           <div className="field">
             <label htmlFor="gitaClassStatus">Gita class attendance</label>
             <select id="gitaClassStatus" name="gitaClassStatus" defaultValue={entry?.gita_class_status ?? "present"}>
               <option value="present">Present</option><option value="absent">Absent</option><option value="no_class">No class</option>
             </select>
+            <FieldErrors errors={state.fieldErrors?.gitaClassStatus} />
           </div>
-          <div className="field"><label htmlFor="morningAratiStatus">Morning Arati</label><select id="morningAratiStatus" name="morningAratiStatus" value={morningStatus} onChange={(event) => { setMorningStatus(event.target.value as "present" | "late" | "absent"); setDirty(true); }}><option value="present">Present</option><option value="late">Late</option><option value="absent">Absent</option></select></div>
-          {morningStatus !== "present" ? <div className="field full-span evidence-upload"><label>Maha Mantra picture{studentId ? " (optional staff correction)" : ""}</label>{evidencePreview ? <Image className="evidence-preview" src={evidencePreview} width={240} height={180} alt="Maha Mantra evidence preview" unoptimized /> : null}{!studentId ? <div className="actions-row"><label className="button button-secondary button-small" htmlFor="mahaMantraFile"><Camera size={16} aria-hidden="true" /> {evidencePreview ? "Replace picture" : "Choose picture"}</label></div> : evidenceUrl ? <a className="button button-secondary button-small" href={evidenceUrl} target="_blank" rel="noreferrer">View evidence</a> : <p className="field-hint">Evidence not provided.</p>}<input ref={evidenceRef} className="visually-hidden" id="mahaMantraFile" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => chooseEvidence(event.target.files?.[0])} /><p className="field-hint">JPG, PNG, or WebP. Maximum 5 MB.</p></div> : null}
-          <div className="field"><label htmlFor="eveningReadingMinutes">Evening book reading (minutes)</label><input id="eveningReadingMinutes" name="eveningReadingMinutes" type="number" min={0} max={360} defaultValue={entry?.evening_reading_minutes ?? 0} required /></div>
+          <div className="field"><label htmlFor="morningAratiStatus">Morning Arati</label><select id="morningAratiStatus" name="morningAratiStatus" value={morningStatus} onChange={(event) => { const status = event.target.value as "present" | "late" | "absent"; setMorningStatus(status); if (status === "present") discardSelectedEvidence(true); setDirty(true); }}><option value="present">Present</option><option value="late">Late</option><option value="absent">Absent</option></select><FieldErrors errors={state.fieldErrors?.morningAratiStatus} /></div>
+          {morningStatus !== "present" ? <div className="field full-span evidence-upload">
+            <label htmlFor="mahaMantraFile">Maha Mantra picture</label>
+            {evidencePreview ? <div className="evidence-preview-wrap">
+              <Image className="evidence-preview" src={evidencePreview} width={240} height={180} alt="Maha Mantra evidence preview" unoptimized />
+              <button className="evidence-remove-button" type="button" aria-label="Remove selected image" onClick={removeEvidence}>
+                <X size={16} aria-hidden="true" />
+              </button>
+            </div> : entry?.maha_mantra_purged_at ? <p className="field-hint">{evidencePurgedMessage}</p> : null}
+            <div className="actions-row"><label className="button button-secondary button-small" htmlFor="mahaMantraFile"><Camera size={16} aria-hidden="true" /> {evidencePreview ? "Replace picture" : "Choose picture"}</label>{evidenceUrl && !evidenceFile ? <a className="button button-secondary button-small" href={evidenceUrl} target="_blank" rel="noreferrer">View evidence</a> : null}</div>
+            <input key={evidenceInputVersion} ref={evidenceRef} aria-label="Choose Maha Mantra image" className="visually-hidden" id="mahaMantraFile" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => void chooseEvidence(event.target.files?.[0])} />
+            <FieldErrors errors={state.fieldErrors?.mahaMantraPath} />
+            <p className="field-hint">JPG, PNG, or WebP. Maximum 5 MB.</p>
+          </div> : null}
+          <div className="field"><label htmlFor="eveningReadingMinutes">Evening book reading (minutes)</label><input id="eveningReadingMinutes" name="eveningReadingMinutes" type="number" min={0} max={360} defaultValue={entry?.evening_reading_minutes ?? 0} required /><FieldErrors errors={state.fieldErrors?.eveningReadingMinutes} /></div>
         </div>
       </fieldset>
       <fieldset className="routine-section full-span">
         <legend>Study</legend>
         <div className="split-form">
-          <div className="field"><label htmlFor="studyHours">Study hours</label><input id="studyHours" name="studyHours" type="number" min={0} max={18} defaultValue={hours} required /></div>
-          <div className="field"><label htmlFor="studyMinutes">Additional minutes</label><input id="studyMinutes" name="studyMinutes" type="number" min={0} max={59} defaultValue={minutes} required /></div>
+          <div className="field"><label htmlFor="studyHours">Study hours</label><input id="studyHours" name="studyHours" type="number" min={0} max={18} defaultValue={hours} required /><FieldErrors errors={state.fieldErrors?.studyHours} /></div>
+          <div className="field"><label htmlFor="studyMinutes">Additional minutes</label><input id="studyMinutes" name="studyMinutes" type="number" min={0} max={59} defaultValue={minutes} required /><FieldErrors errors={state.fieldErrors?.studyMinutes} /></div>
           <input name="libraryAttended" type="hidden" value={entry?.library_attended ? "on" : "off"} />
         </div>
       </fieldset>
       <fieldset className="routine-section full-span">
         <legend>Discipline</legend>
         <div className="split-form">
-          <div className="field"><label htmlFor="sleepTime">Previous night sleep time</label><input id="sleepTime" name="sleepTime" type="time" defaultValue={entry?.sleep_time.slice(0, 5) ?? "20:30"} required /></div>
-          <div className="field"><label htmlFor="wakeTime">Wake-up time</label><input id="wakeTime" name="wakeTime" type="time" defaultValue={entry?.wake_time.slice(0, 5) ?? "04:00"} required /></div>
+          <div className="field"><label htmlFor="sleepTime">Previous night sleep time</label><input id="sleepTime" name="sleepTime" type="time" defaultValue={entry?.sleep_time.slice(0, 5) ?? "20:30"} required /><FieldErrors errors={state.fieldErrors?.sleepTime} /></div>
+          <div className="field"><label htmlFor="wakeTime">Wake-up time</label><input id="wakeTime" name="wakeTime" type="time" defaultValue={entry?.wake_time.slice(0, 5) ?? "04:00"} required /><FieldErrors errors={state.fieldErrors?.wakeTime} /></div>
         </div>
       </fieldset>
       <fieldset className="routine-section full-span">
         <legend>Seva &amp; Character</legend>
-        <div className="field"><label htmlFor="sevaMinutes">Seva (minutes)</label><input id="sevaMinutes" name="sevaMinutes" type="number" min={0} max={720} defaultValue={entry?.seva_minutes ?? 0} required /></div>
+        <div className="field"><label htmlFor="sevaMinutes">Seva (minutes)</label><input id="sevaMinutes" name="sevaMinutes" type="number" min={0} max={720} defaultValue={entry?.seva_minutes ?? 0} required /><FieldErrors errors={state.fieldErrors?.sevaMinutes} /></div>
         <p className="field-hint">This category is calculated from self-reported seva minutes, not a subjective character assessment.</p>
       </fieldset>
       <div className="field full-span">
@@ -182,15 +293,9 @@ export function DailyEntryForm({
           defaultValue={entry?.note ?? ""}
           placeholder="Add anything the administration should know…"
         />
+        <FieldErrors errors={state.fieldErrors?.note} />
       </div>
-      {state.message && state.status !== "success" ? (
-        <p
-          className="form-message form-error full-span"
-          role="alert"
-        >
-          {state.message}
-        </p>
-      ) : null}
+      </fieldset>
       </form>
       <dialog
         ref={successDialogRef}

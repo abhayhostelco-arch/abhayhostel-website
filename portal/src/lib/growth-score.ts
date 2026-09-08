@@ -106,8 +106,9 @@ export function compareGrowthStudents(
   aScore: number,
   bScore: number,
 ): number {
-  return bScore - aScore
-    || a.studentName.localeCompare(b.studentName, undefined, { sensitivity: "base" })
+  const normalizeName = (name: string) => name.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+  return Math.round(bScore) - Math.round(aScore)
+    || normalizeName(a.studentName).localeCompare(normalizeName(b.studentName), undefined, { sensitivity: "base" })
     || a.studentId.localeCompare(b.studentId);
 }
 

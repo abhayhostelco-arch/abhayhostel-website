@@ -61,6 +61,7 @@ export function AccountForm({ role, mentors = [] }: { role: "admin" | "student";
           {state.message}
         </p>
       ) : null}
+      {state.confirmation === "duplicate_student_name" ? <label className="full-span"><input name="confirmDuplicateName" type="checkbox" required /> I confirm these are two different students who share the same normalized name.</label> : null}
       {state.temporaryPassword ? (
         <CopyableTemporaryPassword
           key={state.temporaryPassword}

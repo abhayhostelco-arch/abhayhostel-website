@@ -169,14 +169,14 @@ describe("Growth Score reporting", () => {
     expect(report.students.map((value) => [value.studentId, value.rank])).toEqual([["configured", 1], ["legacy", null]]);
   });
 
-  it("orders distinct internal scores before presentation rounding", () => {
+  it("orders equal displayed scores by normalized student name", () => {
     const report = buildGrowthReport(
       [student("a", "Alpha"), student("z", "Zulu")],
       [entry("a", { study_minutes: 180 }), entry("z", { study_minutes: 181 })],
       { ...settings, score_start_date: "2026-08-22" }, 1, new Date("2026-08-22T06:30:00Z"),
     );
 
-    expect(report.students.map((value) => value.studentName)).toEqual(["Zulu", "Alpha"]);
+    expect(report.students.map((value) => value.studentName)).toEqual(["Alpha", "Zulu"]);
     expect(Math.round(report.students[0].overall)).toBe(Math.round(report.students[1].overall));
   });
 

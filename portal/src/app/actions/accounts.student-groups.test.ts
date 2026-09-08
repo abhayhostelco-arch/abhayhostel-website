@@ -82,15 +82,19 @@ function profileBuilder() {
       const row = profiles.find((profile) => [...filters].every(([key, value]) => profile[key as keyof Profile] === value));
       return { data: row ?? null, error: null };
     },
-    then<TResult1 = { error: typeof profileUpdateError }, TResult2 = never>(
-      onfulfilled?: ((value: { error: typeof profileUpdateError }) => TResult1 | PromiseLike<TResult1>) | null,
+    then<TResult1 = { error: typeof profileUpdateError; data?: Profile[] }, TResult2 = never>(
+      onfulfilled?: ((value: { error: typeof profileUpdateError; data?: Profile[] }) => TResult1 | PromiseLike<TResult1>) | null,
       onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
     ): PromiseLike<TResult1 | TResult2> {
       if (updateValues) {
         const row = profiles.find((profile) => [...filters].every(([key, value]) => profile[key as keyof Profile] === value));
         if (row && !profileUpdateError) Object.assign(row, updateValues);
       }
-      return Promise.resolve({ error: profileUpdateErrors.length ? profileUpdateErrors.shift() ?? null : profileUpdateError }).then(onfulfilled, onrejected);
+      const error = profileUpdateErrors.length ? profileUpdateErrors.shift() ?? null : profileUpdateError;
+      const data = selection === "id,full_name"
+        ? profiles.filter((profile) => [...filters].every(([key, value]) => profile[key as keyof Profile] === value))
+        : undefined;
+      return Promise.resolve({ error, data }).then(onfulfilled, onrejected);
     },
   };
   return builder;
@@ -125,6 +129,24 @@ beforeEach(() => {
 });
 
 describe("Student group account actions", () => {
+  it("requires explicit confirmation when an active normalized student name already exists", async () => {
+    profiles.push({ ...student, id: "00000000-0000-4000-8000-000000000031", full_name: "  new   STUDENT ", is_active: true });
+
+    const first = await accountActions.createAccountAction({ status: "idle" }, studentForm("abhay_hostel"));
+
+    expect(first).toEqual({
+      status: "error",
+      message: "An active Student named New Student already exists. Confirm that these are two different people before creating another account.",
+      confirmation: "duplicate_student_name",
+    });
+    expect(mocks.createUser).not.toHaveBeenCalled();
+
+    const confirmed = studentForm("abhay_hostel");
+    confirmed.set("confirmDuplicateName", "on");
+    await expect(accountActions.createAccountAction({ status: "idle" }, confirmed)).resolves.toMatchObject({ status: "success" });
+    expect(mocks.createUser).toHaveBeenCalledOnce();
+  });
+
   it("creates a Student with the selected group in auth metadata and verifies it through the audited RPC", async () => {
     mocks.createUser.mockResolvedValue({ data: { user: { id: student.id } }, error: null });
 

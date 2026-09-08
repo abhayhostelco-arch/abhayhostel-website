@@ -86,6 +86,10 @@ describe("student groups, payments, and notifications migration safety", () => {
         filename: "202609010003_cancel_student_payment.sql",
         statement: "delete from public.student_payments where id = payment_row.id;",
       },
+      {
+        filename: "202609070001_daily_entry_reliability.sql",
+        statement: "drop constraint if exists cleanup_candidates_category_check;",
+      },
     ]);
     expect(normalized).toContain(
       "alter table public.audit_events add constraint audit_events_action_check check",

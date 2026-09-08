@@ -21,6 +21,7 @@ import {
 const studentGroupMigrationMessage = "Student groups are unavailable until the student group migration is applied.";
 const manualRecoveryMessage = "Automatic account recovery failed. Manually disable the Auth login and portal profile before retrying.";
 const concurrentReactivationMessage = "The Student was reactivated by another request. Refresh before changing the group.";
+const normalizePersonName = (name: string) => name.trim().replace(/\s+/g, " ").toLocaleLowerCase();
 
 async function audit(
   actorId: string,
@@ -224,6 +225,25 @@ export async function createAccountAction(
       message: "Existing inactive account restored. Copy the new temporary password now.",
       temporaryPassword: password,
     };
+  }
+
+  if (parsed.data.role === "student" && formData.get("confirmDuplicateName") !== "on") {
+    const { data: activeStudents, error: duplicateCheckError } = await admin
+      .from("profiles")
+      .select("id,full_name")
+      .eq("role", "student")
+      .eq("is_active", true);
+    if (duplicateCheckError) {
+      return { status: "error", message: "Existing Student names could not be checked. Try again before creating the account." };
+    }
+    const duplicate = (activeStudents ?? []).find((student) => normalizePersonName(String(student.full_name)) === normalizePersonName(parsed.data.fullName));
+    if (duplicate) {
+      return {
+        status: "error",
+        message: `An active Student named ${parsed.data.fullName} already exists. Confirm that these are two different people before creating another account.`,
+        confirmation: "duplicate_student_name",
+      };
+    }
   }
 
   const { data, error } = await admin.auth.admin.createUser({

@@ -8,15 +8,15 @@ const student = (id: string, name: string, score: number): StudentGrowthReport =
 });
 
 describe("category leaderboards", () => {
-  it("orders category ranks by precise scores before presentation rounding", () => {
+  it("orders equal displayed category scores by normalized student name", () => {
     const ranked = rankByCategory([
       { ...student("z", "Zulu", 50), study: 90.4 },
-      { ...student("a", "Alpha", 80), study: 90.2 },
+      { ...student("a", "  alpha   ", 80), study: 90.2 },
       { ...student("c", "Charlie", 70), study: 70 },
     ], "study");
     expect(ranked.map((item) => [item.studentId, item.categoryRank, item.categoryScore])).toEqual([
-      ["z", 1, 90],
-      ["a", 2, 90],
+      ["a", 1, 90],
+      ["z", 2, 90],
       ["c", 3, 70],
     ]);
   });
