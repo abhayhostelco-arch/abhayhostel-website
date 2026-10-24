@@ -27,7 +27,7 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ci_service_role_key_not_a_real_credential
       REAUTH_SECRET: ci-only-reauth-secret-at-least-32-characters
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 22
